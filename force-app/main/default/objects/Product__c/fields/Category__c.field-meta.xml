@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Category__c</fullName>
+    <label>Category</label>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Biscuits</fullName>
+                <default>false</default>
+                <label>Biscuits</label>
+            </value>
+            <value>
+                <fullName>Confectionery</fullName>
+                <default>false</default>
+                <label>Confectionery</label>
+            </value>
+            <value>
+                <fullName>Snacks</fullName>
+                <default>false</default>
+                <label>Snacks</label>
+            </value>
+            <value>
+                <fullName>Chocolates</fullName>
+                <default>false</default>
+                <label>Chocolates</label>
+            </value>
+            <value>
+                <fullName>Beverages</fullName>
+                <default>false</default>
+                <label>Beverages</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

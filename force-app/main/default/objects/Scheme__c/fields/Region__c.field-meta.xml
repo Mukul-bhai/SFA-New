@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Region__c</fullName>
+    <label>Region</label>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>All India</fullName>
+                <default>true</default>
+                <label>All India</label>
+            </value>
+            <value>
+                <fullName>North</fullName>
+                <default>false</default>
+                <label>North</label>
+            </value>
+            <value>
+                <fullName>South</fullName>
+                <default>false</default>
+                <label>South</label>
+            </value>
+            <value>
+                <fullName>East</fullName>
+                <default>false</default>
+                <label>East</label>
+            </value>
+            <value>
+                <fullName>West</fullName>
+                <default>false</default>
+                <label>West</label>
+            </value>
+            <value>
+                <fullName>Karnataka</fullName>
+                <default>false</default>
+                <label>Karnataka</label>
+            </value>
+            <value>
+                <fullName>Maharashtra</fullName>
+                <default>false</default>
+                <label>Maharashtra</label>
+            </value>
+            <value>
+                <fullName>Delhi NCR</fullName>
+                <default>false</default>
+                <label>Delhi NCR</label>
+            </value>
+            <value>
+                <fullName>Tamil Nadu</fullName>
+                <default>false</default>
+                <label>Tamil Nadu</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

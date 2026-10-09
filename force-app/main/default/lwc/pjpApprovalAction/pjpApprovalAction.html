@@ -1,0 +1,131 @@
+<template>
+    <lightning-card title="PJP Monthly Route Plan - Reporting Approval" icon-name="custom:custom25">
+        <div class="slds-p-around_medium">
+            <template if:true={isLoading}>
+                <lightning-spinner alternative-text="Loading PJP details..."></lightning-spinner>
+            </template>
+
+            <template if:true={pjpInfo}>
+                <!-- Header Status Badge -->
+                <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_small">
+                    <div>
+                        <span class="slds-text-heading_small slds-m-right_small">Plan Status:</span>
+                        <lightning-badge label={pjpInfo.status} class={statusBadgeClass}></lightning-badge>
+                    </div>
+                    <div class="slds-text-color_weak slds-text-body_small">
+                        Period: <strong>{pjpInfo.month} {pjpInfo.year}</strong>
+                    </div>
+                </div>
+
+                <!-- Info Grid -->
+                <div class="slds-box slds-theme_shade slds-m-bottom_medium">
+                    <div class="slds-grid slds-wrap slds-gutters">
+                        <div class="slds-col slds-size_1-of-2 slds-p-bottom_x-small">
+                            <span class="slds-text-color_weak">Field Executive:</span>
+                            <div class="slds-text-heading_label slds-truncate">
+                                <strong>{pjpInfo.employeeName}</strong>
+                                <span if:true={pjpInfo.employeeHierarchy} class="slds-badge slds-m-left_xx-small">{pjpInfo.employeeHierarchy}</span>
+                            </div>
+                        </div>
+                        <div class="slds-col slds-size_1-of-2 slds-p-bottom_x-small">
+                            <span class="slds-text-color_weak">Reporting Manager (Approver):</span>
+                            <div class="slds-text-heading_label slds-truncate">
+                                <strong>{pjpInfo.reportingManagerName}</strong>
+                            </div>
+                        </div>
+                        <div class="slds-col slds-size_1-of-2">
+                            <span class="slds-text-color_weak">Total Planned Beats:</span>
+                            <div class="slds-text-body_regular"><strong>{pjpInfo.totalBeats} Routes</strong></div>
+                        </div>
+                        <div class="slds-col slds-size_1-of-2">
+                            <span class="slds-text-color_weak">Total Target Outlets:</span>
+                            <div class="slds-text-body_regular"><strong>{pjpInfo.totalOutlets} Shops</strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Notifications / Alerts -->
+                <template if:true={isApproved}>
+                    <div class="slds-notify slds-notify_alert slds-alert_success slds-m-bottom_small" role="alert">
+                        <lightning-icon icon-name="utility:check" variant="inverse" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                        <h2>Plan has been Approved by Reporting Manager! Active for field execution.</h2>
+                    </div>
+                </template>
+
+                <template if:true={isSubmitted}>
+                    <div class="slds-notify slds-notify_alert slds-alert_warning slds-m-bottom_small" role="alert">
+                        <lightning-icon icon-name="utility:clock" variant="inverse" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                        <h2>PJP is Submitted and currently Pending Approval with Manager: {pjpInfo.reportingManagerName}</h2>
+                    </div>
+                </template>
+
+                <template if:true={isRejected}>
+                    <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small" role="alert">
+                        <lightning-icon icon-name="utility:close" variant="inverse" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                        <h2>Plan was Rejected. Please revise the routes and re-submit for approval.</h2>
+                    </div>
+                </template>
+
+                <!-- Action Buttons -->
+                <div class="slds-grid slds-grid_align-end slds-m-top_small">
+                    <!-- Submit for Approval Button -->
+                    <template if:true={pjpInfo.canSubmit}>
+                        <lightning-button
+                            variant="brand"
+                            label="Submit for Approval"
+                            icon-name="utility:send"
+                            onclick={handleSubmitClick}
+                            class="slds-m-left_x-small">
+                        </lightning-button>
+                    </template>
+
+                    <!-- Approve & Reject Buttons for Manager or Admin -->
+                    <template if:true={showApprovalButtons}>
+                        <lightning-button
+                            variant="success"
+                            label="Approve Plan"
+                            icon-name="utility:check"
+                            onclick={openApproveModal}
+                            class="slds-m-left_x-small">
+                        </lightning-button>
+                        <lightning-button
+                            variant="destructive"
+                            label="Reject Plan"
+                            icon-name="utility:close"
+                            onclick={openRejectModal}
+                            class="slds-m-left_x-small">
+                        </lightning-button>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- Modal for Comments when Approving / Rejecting / Submitting -->
+    <template if:true={showModal}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_small" aria-modal="true">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={closeModal}>
+                        <lightning-icon icon-name="utility:close" alternative-text="close" variant="inverse" size="small"></lightning-icon>
+                    </button>
+                    <h2 class="slds-modal__title slds-hyphenate">{modalTitle}</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <p class="slds-m-bottom_small">{modalMessage}</p>
+                    <lightning-textarea
+                        label="Comments / Notes"
+                        placeholder="Enter comments here..."
+                        value={comments}
+                        onchange={handleCommentsChange}>
+                    </lightning-textarea>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Cancel" onclick={closeModal} class="slds-m-right_x-small"></lightning-button>
+                    <lightning-button variant={modalButtonVariant} label={modalButtonLabel} onclick={handleConfirmAction}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Travel_Mode__c</fullName>
+    <label>Travel Mode</label>
+    
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+                <value>
+                    <fullName>Two_Wheeler</fullName>
+                    <default>true</default>
+                    <label>Two Wheeler</label>
+                </value>
+                <value>
+                    <fullName>Four_Wheeler</fullName>
+                    <default>false</default>
+                    <label>Four Wheeler</label>
+                </value>
+                <value>
+                    <fullName>Public_Transport</fullName>
+                    <default>false</default>
+                    <label>Public Transport</label>
+                </value>
+                <value>
+                    <fullName>Auto_Cab</fullName>
+                    <default>false</default>
+                    <label>Auto Cab</label>
+                </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

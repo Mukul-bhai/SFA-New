@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>District__c</fullName>
+    <label>District</label>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>false</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Bengaluru</fullName>
+                <default>true</default>
+                <label>Bengaluru</label>
+            </value>
+            <value>
+                <fullName>Mysuru</fullName>
+                <default>false</default>
+                <label>Mysuru</label>
+            </value>
+            <value>
+                <fullName>Mumbai</fullName>
+                <default>false</default>
+                <label>Mumbai</label>
+            </value>
+            <value>
+                <fullName>South Delhi</fullName>
+                <default>false</default>
+                <label>South Delhi</label>
+            </value>
+            <value>
+                <fullName>Ahmedabad</fullName>
+                <default>false</default>
+                <label>Ahmedabad</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Outlet_Category__c</fullName>
+    <label>Outlet Category</label>
+    
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+                <value>
+                    <fullName>Kirana</fullName>
+                    <default>false</default>
+                    <label>Kirana</label>
+                </value>
+                <value>
+                    <fullName>Supermarket</fullName>
+                    <default>false</default>
+                    <label>Supermarket</label>
+                </value>
+                <value>
+                    <fullName>Wholesaler</fullName>
+                    <default>false</default>
+                    <label>Wholesaler</label>
+                </value>
+                <value>
+                    <fullName>Chemist</fullName>
+                    <default>false</default>
+                    <label>Chemist</label>
+                </value>
+                <value>
+                    <fullName>Hypermarket</fullName>
+                    <default>false</default>
+                    <label>Hypermarket</label>
+                </value>
+                <value>
+                    <fullName>General_Store</fullName>
+                    <default>false</default>
+                    <label>General Store</label>
+                </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

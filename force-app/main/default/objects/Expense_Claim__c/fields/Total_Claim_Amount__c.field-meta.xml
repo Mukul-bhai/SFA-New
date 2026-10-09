@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Total_Claim_Amount__c</fullName>
+    <label>Total Claim Amount</label>
+    
+    <type>Number</type>
+    <formula>Daily_Allowance_Amount__c + Travel_Allowance_Amount__c + Lodging_Hotel_Amount__c + Food_Amount__c + Misc_Amount__c</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <precision>10</precision>
+    <scale>2</scale>
+</CustomField>

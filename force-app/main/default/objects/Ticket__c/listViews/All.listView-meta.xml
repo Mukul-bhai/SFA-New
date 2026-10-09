@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All</fullName>
+    <filterScope>Everything</filterScope>
+    <label>All Tickets</label>
+    <columns>NAME</columns>
+    <columns>Subject__c</columns>
+    <columns>Outlet__c</columns>
+    <columns>Category__c</columns>
+    <columns>Priority__c</columns>
+    <columns>Status__c</columns>
+    <columns>Assigned_To__c</columns>
+    <columns>CREATED_DATE</columns>
+</ListView>

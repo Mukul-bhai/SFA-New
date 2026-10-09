@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All</fullName>
+    <filterScope>Everything</filterScope>
+    <label>All Beats</label>
+    <columns>NAME</columns>
+    <columns>Beat_ID__c</columns>
+    <columns>Route_Date__c</columns>
+    <columns>PJP__c</columns>
+    <columns>Assigned_To__c</columns>
+    <columns>Distributor__c</columns>
+    <columns>Day_Of_Week__c</columns>
+    <columns>State__c</columns>
+    <columns>District__c</columns>
+    <columns>Town__c</columns>
+    <columns>Total_Outlets__c</columns>
+</ListView>

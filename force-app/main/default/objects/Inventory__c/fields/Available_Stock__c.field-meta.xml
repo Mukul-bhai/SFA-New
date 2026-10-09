@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Available_Stock__c</fullName>
+    <label>Available Stock</label>
+    <type>Number</type>
+    <formula>Physical_Stock__c - (Reserved_Stock__c + Blocked_Stock__c + Damaged_Stock__c + Expired_Stock__c)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <precision>12</precision>
+    <scale>2</scale>
+</CustomField>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>UOM__c</fullName>
+    <label>Unit of Measure (UOM)</label>
+    
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+                <value>
+                    <fullName>Piece</fullName>
+                    <default>true</default>
+                    <label>Piece</label>
+                </value>
+                <value>
+                    <fullName>Box</fullName>
+                    <default>false</default>
+                    <label>Box</label>
+                </value>
+                <value>
+                    <fullName>Carton</fullName>
+                    <default>false</default>
+                    <label>Carton</label>
+                </value>
+                <value>
+                    <fullName>Bottle</fullName>
+                    <default>false</default>
+                    <label>Bottle</label>
+                </value>
+                <value>
+                    <fullName>Pack</fullName>
+                    <default>false</default>
+                    <label>Pack</label>
+                </value>
+                <value>
+                    <fullName>Case</fullName>
+                    <default>false</default>
+                    <label>Case</label>
+                </value>
+                <value>
+                    <fullName>Kg</fullName>
+                    <default>false</default>
+                    <label>Kg</label>
+                </value>
+                <value>
+                    <fullName>Liter</fullName>
+                    <default>false</default>
+                    <label>Liter</label>
+                </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

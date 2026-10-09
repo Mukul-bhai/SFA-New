@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Flavour__c</fullName>
+    <label>Flavour</label>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Glucose</fullName>
+                <default>false</default>
+                <label>Glucose</label>
+            </value>
+            <value>
+                <fullName>Salty</fullName>
+                <default>false</default>
+                <label>Salty</label>
+            </value>
+            <value>
+                <fullName>Sweet &amp; Salty</fullName>
+                <default>false</default>
+                <label>Sweet &amp; Salty</label>
+            </value>
+            <value>
+                <fullName>Chocolate</fullName>
+                <default>false</default>
+                <label>Chocolate</label>
+            </value>
+            <value>
+                <fullName>Bourbon</fullName>
+                <default>false</default>
+                <label>Bourbon</label>
+            </value>
+            <value>
+                <fullName>Butter</fullName>
+                <default>false</default>
+                <label>Butter</label>
+            </value>
+            <value>
+                <fullName>Elaichi</fullName>
+                <default>false</default>
+                <label>Elaichi</label>
+            </value>
+            <value>
+                <fullName>Vanilla</fullName>
+                <default>false</default>
+                <label>Vanilla</label>
+            </value>
+            <value>
+                <fullName>Cashew Butter</fullName>
+                <default>false</default>
+                <label>Cashew Butter</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Scheme_Type__c</fullName>
+    <label>Scheme Type</label>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Buy Same Product Free</fullName>
+                <default>true</default>
+                <label>Buy Same Product Free (e.g. Buy Parle-G Get Parle-G Free)</label>
+            </value>
+            <value>
+                <fullName>Buy Product Get Gift Free</fullName>
+                <default>false</default>
+                <label>Buy Product Get Free Gift (e.g. Buy Parle-G Get Pen Free)</label>
+            </value>
+            <value>
+                <fullName>Buy Product Get Other Product Free</fullName>
+                <default>false</default>
+                <label>Buy Product Get Different Product Free (e.g. Buy Parle-G Get Kopiko Free)</label>
+            </value>
+            <value>
+                <fullName>Slab Discount Scheme</fullName>
+                <default>false</default>
+                <label>Slab Scheme (e.g. Buy 1 Get Rs.10 Off, Buy 2 Get Rs.30 Off)</label>
+            </value>
+            <value>
+                <fullName>Bundle Scheme</fullName>
+                <default>false</default>
+                <label>Bundle Scheme (e.g. 2 Parle-G + 1 Kopiko + 3 Monaco for Rs.200)</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

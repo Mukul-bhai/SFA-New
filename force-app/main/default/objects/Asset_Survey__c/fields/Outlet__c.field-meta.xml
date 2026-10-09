@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Outlet__c</fullName>
+    <label>Outlet Name</label>
+    <type>Lookup</type>
+    <referenceTo>Outlet__c</referenceTo>
+    <relationshipLabel>Asset Surveys</relationshipLabel>
+    <relationshipName>Asset_Surveys</relationshipName>
+    <deleteConstraint>SetNull</deleteConstraint>
+</CustomField>

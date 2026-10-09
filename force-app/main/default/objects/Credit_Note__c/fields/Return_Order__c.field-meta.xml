@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Return_Order__c</fullName>
+    <label>Return Order</label>
+    
+    <type>Lookup</type>
+    <referenceTo>Return_Order__c</referenceTo>
+    <relationshipName>Credit_Notes</relationshipName>
+    <deleteConstraint>SetNull</deleteConstraint>
+</CustomField>

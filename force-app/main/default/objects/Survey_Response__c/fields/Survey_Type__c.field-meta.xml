@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Survey_Type__c</fullName>
+    <label>Survey Type</label>
+    
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+                <value>
+                    <fullName>General_Feedback</fullName>
+                    <default>true</default>
+                    <label>General Feedback</label>
+                </value>
+                <value>
+                    <fullName>New_Launch_Feedback</fullName>
+                    <default>false</default>
+                    <label>New Launch Feedback</label>
+                </value>
+                <value>
+                    <fullName>Visibility_Audit</fullName>
+                    <default>false</default>
+                    <label>Visibility Audit</label>
+                </value>
+                <value>
+                    <fullName>Customer_Satisfaction</fullName>
+                    <default>false</default>
+                    <label>Customer Satisfaction</label>
+                </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

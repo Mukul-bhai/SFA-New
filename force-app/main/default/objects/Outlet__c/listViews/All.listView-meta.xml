@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All</fullName>
+    <filterScope>Everything</filterScope>
+    <label>All Outlets</label>
+    <columns>NAME</columns>
+    <columns>Outlet_Code__c</columns>
+    <columns>Beat__c</columns>
+    <columns>Outlet_Owner_Name__c</columns>
+    <columns>Contact_No__c</columns>
+    <columns>Outlet_Type__c</columns>
+    <columns>State__c</columns>
+    <columns>District__c</columns>
+    <columns>Town__c</columns>
+    <columns>Status__c</columns>
+</ListView>

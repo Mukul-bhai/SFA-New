@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Reason__c</fullName>
+    <label>Reason</label>
+    
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+                <value>
+                    <fullName>Goods_Return</fullName>
+                    <default>true</default>
+                    <label>Goods Return</label>
+                </value>
+                <value>
+                    <fullName>Scheme_Discount_Claim</fullName>
+                    <default>false</default>
+                    <label>Scheme Discount Claim</label>
+                </value>
+                <value>
+                    <fullName>Rate_Difference</fullName>
+                    <default>false</default>
+                    <label>Rate Difference</label>
+                </value>
+                <value>
+                    <fullName>Damage_Allowance</fullName>
+                    <default>false</default>
+                    <label>Damage Allowance</label>
+                </value>
+                <value>
+                    <fullName>Cash_Discount</fullName>
+                    <default>false</default>
+                    <label>Cash Discount</label>
+                </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

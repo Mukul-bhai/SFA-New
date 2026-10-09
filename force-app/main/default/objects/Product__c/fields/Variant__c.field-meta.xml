@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Variant__c</fullName>
+    <label>Variant</label>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>50g</fullName>
+                <default>false</default>
+                <label>50g</label>
+            </value>
+            <value>
+                <fullName>100g</fullName>
+                <default>false</default>
+                <label>100g</label>
+            </value>
+            <value>
+                <fullName>120g</fullName>
+                <default>false</default>
+                <label>120g</label>
+            </value>
+            <value>
+                <fullName>150g</fullName>
+                <default>false</default>
+                <label>150g</label>
+            </value>
+            <value>
+                <fullName>200g</fullName>
+                <default>false</default>
+                <label>200g</label>
+            </value>
+            <value>
+                <fullName>250g</fullName>
+                <default>false</default>
+                <label>250g</label>
+            </value>
+            <value>
+                <fullName>500g</fullName>
+                <default>false</default>
+                <label>500g</label>
+            </value>
+            <value>
+                <fullName>Family Pack</fullName>
+                <default>false</default>
+                <label>Family Pack</label>
+            </value>
+            <value>
+                <fullName>Box 50pcs</fullName>
+                <default>false</default>
+                <label>Box 50pcs</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workflow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldUpdates>
+        <fullName>Set_PJP_Submitted</fullName>
+        <description>Sets PJP status to Submitted when approval process starts</description>
+        <field>Status__c</field>
+        <literalValue>Submitted</literalValue>
+        <name>Set PJP Submitted</name>
+        <notifyAssignee>false</notifyAssignee>
+        <operation>Literal</operation>
+        <protected>false</protected>
+        <reevaluateOnChange>false</reevaluateOnChange>
+    </fieldUpdates>
+    <fieldUpdates>
+        <fullName>Set_PJP_Approved</fullName>
+        <description>Sets PJP status to Approved upon manager approval</description>
+        <field>Status__c</field>
+        <literalValue>Approved</literalValue>
+        <name>Set PJP Approved</name>
+        <notifyAssignee>false</notifyAssignee>
+        <operation>Literal</operation>
+        <protected>false</protected>
+        <reevaluateOnChange>false</reevaluateOnChange>
+    </fieldUpdates>
+    <fieldUpdates>
+        <fullName>Set_PJP_Approved_Date</fullName>
+        <description>Sets Approved Date to NOW upon manager approval</description>
+        <field>Approved_Date__c</field>
+        <formula>NOW()</formula>
+        <name>Set PJP Approved Date</name>
+        <notifyAssignee>false</notifyAssignee>
+        <operation>Formula</operation>
+        <protected>false</protected>
+        <reevaluateOnChange>false</reevaluateOnChange>
+    </fieldUpdates>
+    <fieldUpdates>
+        <fullName>Set_PJP_Rejected</fullName>
+        <description>Sets PJP status to Rejected upon manager rejection</description>
+        <field>Status__c</field>
+        <literalValue>Rejected</literalValue>
+        <name>Set PJP Rejected</name>
+        <notifyAssignee>false</notifyAssignee>
+        <operation>Literal</operation>
+        <protected>false</protected>
+        <reevaluateOnChange>false</reevaluateOnChange>
+    </fieldUpdates>
+</Workflow>

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+    <applicationVisibilities>
+        <application>Enterprise_SFA_DMS</application>
+        <default>false</default>
+        <visible>true</visible>
+    </applicationVisibilities>
+    <applicationVisibilities>
+        <application>SFA_DMS_project</application>
+        <default>true</default>
+        <visible>true</visible>
+    </applicationVisibilities>
+    <custom>false</custom>
+    <userLicense>Salesforce</userLicense>
+    <layoutAssignments>
+        <layout>Product2-Product Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Employee__c-Employee Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>PJP__c-PJP Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Outlet__c-Outlet Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Beat__c-Beat Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Attendance__c-Attendance Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Competition_Capture__c-Competition Capture Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Credit_Note__c-Credit Note Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Distributor__c-Distributor Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Expense_Claim__c-Expense Claim Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Inventory_Batch__c-Inventory Batch Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Inventory_Ledger__c-Inventory Ledger Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Inventory__c-Inventory Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Invoice__c-Invoice Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Merchandising_Audit__c-Merchandising Audit Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Mobile_Auth_Session__c-Mobile Auth Session Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Order_Line__c-Order Line Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Order__c-Order Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Payment__c-Payment Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Retailer_Beat_Mapping__c-Retailer Beat Mapping Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Retailer__c-Retailer Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Return_Line__c-Return Line Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Return_Order__c-Return Order Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Scheme_Slab__c-Scheme Slab Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Scheme__c-Scheme Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Shop_Stock_Check__c-Shop Stock Check Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Survey_Response__c-Survey Response Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Target__c-Target Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Territory__c-Territory Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Visit__c-Visit Layout</layout>
+    </layoutAssignments>
+    <layoutAssignments>
+        <layout>Warehouse__c-Warehouse Layout</layout>
+    </layoutAssignments>
+    <tabVisibilities>
+        <tab>Employee__c</tab>
+        <visibility>DefaultOn</visibility>
+    </tabVisibilities>
+    <tabVisibilities>
+        <tab>PJP__c</tab>
+        <visibility>DefaultOn</visibility>
+    </tabVisibilities>
+    <tabVisibilities>
+        <tab>Beat__c</tab>
+        <visibility>DefaultOn</visibility>
+    </tabVisibilities>
+    <tabVisibilities>
+        <tab>Outlet__c</tab>
+        <visibility>DefaultOn</visibility>
+    </tabVisibilities>
+</Profile>

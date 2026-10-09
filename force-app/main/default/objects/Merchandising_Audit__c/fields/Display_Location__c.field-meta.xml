@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Display_Location__c</fullName>
+    <label>Display Location</label>
+    
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+                <value>
+                    <fullName>Eye_Level_Shelf</fullName>
+                    <default>true</default>
+                    <label>Eye Level Shelf</label>
+                </value>
+                <value>
+                    <fullName>Top_Shelf</fullName>
+                    <default>false</default>
+                    <label>Top Shelf</label>
+                </value>
+                <value>
+                    <fullName>Bottom_Shelf</fullName>
+                    <default>false</default>
+                    <label>Bottom Shelf</label>
+                </value>
+                <value>
+                    <fullName>Cash_Counter</fullName>
+                    <default>false</default>
+                    <label>Cash Counter</label>
+                </value>
+                <value>
+                    <fullName>Endcap_Display</fullName>
+                    <default>false</default>
+                    <label>Endcap Display</label>
+                </value>
+                <value>
+                    <fullName>Floor_Standee</fullName>
+                    <default>false</default>
+                    <label>Floor Standee</label>
+                </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

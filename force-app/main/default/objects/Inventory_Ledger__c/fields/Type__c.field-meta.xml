@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Type__c</fullName>
+    <label>Type</label>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>GRN_Receipt</fullName>
+                <default>false</default>
+                <label>GRN Receipt</label>
+            </value>
+            <value>
+                <fullName>Order_Reservation</fullName>
+                <default>true</default>
+                <label>Order Reservation</label>
+            </value>
+            <value>
+                <fullName>Order_Dispatch</fullName>
+                <default>false</default>
+                <label>Order Dispatch</label>
+            </value>
+            <value>
+                <fullName>Stock_Adjustment</fullName>
+                <default>false</default>
+                <label>Stock Adjustment</label>
+            </value>
+            <value>
+                <fullName>Transfer_In</fullName>
+                <default>false</default>
+                <label>Transfer In</label>
+            </value>
+            <value>
+                <fullName>Transfer_Out</fullName>
+                <default>false</default>
+                <label>Transfer Out</label>
+            </value>
+            <value>
+                <fullName>Damage_WriteOff</fullName>
+                <default>false</default>
+                <label>Damage WriteOff</label>
+            </value>
+            <value>
+                <fullName>Reservation_Release</fullName>
+                <default>false</default>
+                <label>Reservation Release</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

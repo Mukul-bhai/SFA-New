@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Outlet_Code__c</fullName>
+    <label>Outlet Code</label>
+    <type>AutoNumber</type>
+    <displayFormat>OUT-{0000}</displayFormat>
+    <startingNumber>1001</startingNumber>
+</CustomField>

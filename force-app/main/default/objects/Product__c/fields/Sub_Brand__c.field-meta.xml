@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sub_Brand__c</fullName>
+    <label>Sub Brand</label>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Parle-G</fullName>
+                <default>false</default>
+                <label>Parle-G</label>
+            </value>
+            <value>
+                <fullName>Monaco</fullName>
+                <default>false</default>
+                <label>Monaco</label>
+            </value>
+            <value>
+                <fullName>Krackjack</fullName>
+                <default>false</default>
+                <label>Krackjack</label>
+            </value>
+            <value>
+                <fullName>Hide &amp; Seek</fullName>
+                <default>false</default>
+                <label>Hide &amp; Seek</label>
+            </value>
+            <value>
+                <fullName>Good Day</fullName>
+                <default>false</default>
+                <label>Good Day</label>
+            </value>
+            <value>
+                <fullName>Bourbon</fullName>
+                <default>false</default>
+                <label>Bourbon</label>
+            </value>
+            <value>
+                <fullName>Marie Gold</fullName>
+                <default>false</default>
+                <label>Marie Gold</label>
+            </value>
+            <value>
+                <fullName>20-20</fullName>
+                <default>false</default>
+                <label>20-20</label>
+            </value>
+            <value>
+                <fullName>Kopiko</fullName>
+                <default>false</default>
+                <label>Kopiko</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

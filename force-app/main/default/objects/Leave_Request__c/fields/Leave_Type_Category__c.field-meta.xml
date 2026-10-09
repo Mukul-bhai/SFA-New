@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Leave_Type_Category__c</fullName>
+    <description>Indicates whether leave is for an Employee or for Customer / Retailer Shop closure</description>
+    <label>Leave Category</label>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Sales Executive Leave</fullName>
+                <default>true</default>
+                <label>Sales Executive Leave</label>
+            </value>
+            <value>
+                <fullName>Customer / Retailer Leave</fullName>
+                <default>false</default>
+                <label>Customer / Retailer Leave</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
