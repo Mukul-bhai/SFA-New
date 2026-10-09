@@ -7,7 +7,7 @@ class SalesforceAuthService {
   static const String instanceUrl = 'https://orgfarm-03c6654659-dev-ed.develop.my.salesforce.com';
   // Active Bearer token from Salesforce CLI
   static final String defaultBearerToken = utf8.decode(base64.decode(
-    'MDBEZzgwMDAwMExST1ZCIUFRRUFRUGhFNXA0eHFQRTB4UzFWVGRmVERybnpzZE9vbEVDcUFReHEzSzJKakRYak9pTFljdjRpVFZNbHFVN2NPS25zb0VsVVlkYVF2V2hmU3A5VG5vaGs1cmw1S1Nnbw==',
+    'MDBEZzgwMDAwMExST1ZCIUFRRUFRRldhUmk4NUlHRzFOX3ZUTW01NkhEbTJOMUh4SjluT1VVRE55eG5GUGJZOEFQQTlUTlJQSkhfSzdkUnZHWVhncjBkOUMzTzJrTmlqSTdUMGxxOUtUTnIxLlJ5RA==',
   ));
 
   late final Dio _dio;
