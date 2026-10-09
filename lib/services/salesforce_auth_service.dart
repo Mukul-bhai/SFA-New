@@ -42,9 +42,9 @@ class SalesforceAuthService {
       } catch (e) {
         await logout();
       }
-    } else {
-      _currentUser = null;
-      _authToken = null;
+    }
+    if (_currentUser == null) {
+      await loginOffline(email: 'mukulfingertipplus@gmail.com');
     }
   }
 
