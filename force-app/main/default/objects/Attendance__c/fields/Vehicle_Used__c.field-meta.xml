@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Vehicle_Used__c</fullName>
+    <description>Vehicle Used as per BRD Point 21.4: Personal/Own, Office, Public Transport</description>
+    <externalId>false</externalId>
+    <label>Vehicle Used</label>
+    <length>50</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

@@ -45,6 +45,11 @@ global inherited sharing class SfaDynamicRestService {
         public Boolean isDayActive;
         public String remarks;
         public String employeeName;
+        public String dayPlan;
+        public String dayPlanOtherDetails;
+        public String tourPlan;
+        public String modeOfTransport;
+        public String vehicleUsed;
     }
 
     global class AttendanceResponse {
@@ -235,6 +240,18 @@ global inherited sharing class SfaDynamicRestService {
         public String territoryId;
         public String email;
         public String userId;
+
+        // BRD Start Day / Attendance Fields (Points 21 & 31)
+        public String dayPlan;
+        public String dayPlanOtherDetails;
+        public String tourPlan;
+        public String modeOfTransport;
+        public String vehicleUsed;
+
+        // BRD Check-Out Fields (Points 23.7 & 30)
+        public String selfieUrl;
+        public String freezerPhotoUrl;
+        public String checkoutComments;
     }
 
     global class TargetDTO {
@@ -367,6 +384,7 @@ global inherited sharing class SfaDynamicRestService {
             if (path.endsWith('/attendance')) action = 'attendance';
             else if (path.endsWith('/visit/start')) action = 'visit-start';
             else if (path.endsWith('/visit/checkout')) action = 'visit-checkout';
+            else if (path.endsWith('/visit/missed')) action = 'visit-missed';
             else if (path.endsWith('/orders')) action = 'order';
             else if (path.endsWith('/stock-check')) action = 'stock-check';
             else if (path.endsWith('/asset-survey')) action = 'asset-survey';
@@ -387,6 +405,8 @@ global inherited sharing class SfaDynamicRestService {
             return processVisitStart(payload, currentUserId);
         } else if (action == 'visit-checkout') {
             return processVisitCheckout(payload, currentUserId);
+        } else if (action == 'visit-missed') {
+            return processVisitMissed(payload, currentUserId);
         } else if (action == 'order') {
             return processOrder(payload, currentUserId);
         } else if (action == 'stock-check') {
@@ -524,7 +544,8 @@ global inherited sharing class SfaDynamicRestService {
         // 3. Today's live attendance
         Id empId = resp.employeeId;
         List<Attendance__c> atts = [
-            SELECT Id, Attendance_Date__c, Start_Time__c, End_Time__c, Geo_Location__c, Attendance_Status__c, Total_Working_Hours__c 
+            SELECT Id, Attendance_Date__c, Start_Time__c, End_Time__c, Geo_Location__c, Attendance_Status__c, Total_Working_Hours__c,
+                   Day_Plan__c, Day_Plan_Other_Details__c, Tour_Plan__c, Mode_Of_Transport__c, Vehicle_Used__c 
             FROM Attendance__c 
             WHERE (User__c = :userId OR (Employee__c != null AND Employee__c = :empId)) 
               AND (Attendance_Date__c = :Date.today() OR (Attendance_Date__c = null AND CreatedDate = TODAY))
@@ -543,6 +564,11 @@ global inherited sharing class SfaDynamicRestService {
             resp.todayAttendance.status = String.isNotBlank(a.Attendance_Status__c) ? a.Attendance_Status__c : 'Present';
             resp.todayAttendance.totalWorkingHours = a.Total_Working_Hours__c != null ? a.Total_Working_Hours__c : 0.0;
             resp.todayAttendance.isDayActive = (a.Start_Time__c != null && a.End_Time__c == null);
+            resp.todayAttendance.dayPlan = a.Day_Plan__c;
+            resp.todayAttendance.dayPlanOtherDetails = a.Day_Plan_Other_Details__c;
+            resp.todayAttendance.tourPlan = a.Tour_Plan__c;
+            resp.todayAttendance.modeOfTransport = a.Mode_Of_Transport__c;
+            resp.todayAttendance.vehicleUsed = a.Vehicle_Used__c;
         } else {
             resp.todayAttendance.isDayActive = false;
         }
@@ -813,7 +839,8 @@ global inherited sharing class SfaDynamicRestService {
         // Query attendance for selected date
         List<Attendance__c> recs = [
             SELECT Id, Attendance_Date__c, Start_Time__c, End_Time__c, Geo_Location__c, 
-                   Attendance_Status__c, Total_Working_Hours__c, Employee__r.Name 
+                   Attendance_Status__c, Total_Working_Hours__c, Employee__r.Name,
+                   Day_Plan__c, Day_Plan_Other_Details__c, Tour_Plan__c, Mode_Of_Transport__c, Vehicle_Used__c 
             FROM Attendance__c 
             WHERE (User__c = :userId OR (Employee__c != null AND Employee__c = :empId))
               AND (Attendance_Date__c = :queryDate OR (Attendance_Date__c = null AND CreatedDate = TODAY))
@@ -834,7 +861,8 @@ global inherited sharing class SfaDynamicRestService {
         // Query history for this employee (last 30 days)
         List<Attendance__c> historyRecs = [
             SELECT Id, Attendance_Date__c, Start_Time__c, End_Time__c, Geo_Location__c, 
-                   Attendance_Status__c, Total_Working_Hours__c, Employee__r.Name 
+                   Attendance_Status__c, Total_Working_Hours__c, Employee__r.Name,
+                   Day_Plan__c, Day_Plan_Other_Details__c, Tour_Plan__c, Mode_Of_Transport__c, Vehicle_Used__c 
             FROM Attendance__c 
             WHERE (User__c = :userId OR (Employee__c != null AND Employee__c = :empId))
             ORDER BY Attendance_Date__c DESC, CreatedDate DESC 
@@ -861,6 +889,11 @@ global inherited sharing class SfaDynamicRestService {
         if (a.Employee__r != null) {
             d.employeeName = a.Employee__r.Name;
         }
+        d.dayPlan = a.Day_Plan__c;
+        d.dayPlanOtherDetails = a.Day_Plan_Other_Details__c;
+        d.tourPlan = a.Tour_Plan__c;
+        d.modeOfTransport = a.Mode_Of_Transport__c;
+        d.vehicleUsed = a.Vehicle_Used__c;
         return d;
     }
 
@@ -908,9 +941,15 @@ global inherited sharing class SfaDynamicRestService {
         ];
 
         Attendance__c att;
-        if (!existing.isEmpty()) {
+        if (!existing.isEmpty() && existing[0].Start_Time__c != null && existing[0].End_Time__c == null) {
             att = existing[0];
             att.End_Time__c = DateTime.now();
+            att.Punch_Out_Time__c = DateTime.now();
+            att.Attendance_Status__c = 'Completed';
+            if (req.latitude != null && req.longitude != null) {
+                att.Punch_Out_Location__Latitude__s = req.latitude;
+                att.Punch_Out_Location__Longitude__s = req.longitude;
+            }
             if (att.Start_Time__c != null) {
                 Decimal hours = (Decimal.valueOf(att.End_Time__c.getTime() - att.Start_Time__c.getTime())) / (1000 * 3600);
                 att.Total_Working_Hours__c = hours.setScale(2);
@@ -924,9 +963,19 @@ global inherited sharing class SfaDynamicRestService {
                 Employee__c = !emps.isEmpty() ? emps[0].Id : null,
                 Attendance_Date__c = Date.today(),
                 Start_Time__c = DateTime.now(),
-                Geo_Location__c = String.valueOf(req.latitude) + ', ' + String.valueOf(req.longitude),
-                Attendance_Status__c = 'Present'
+                Punch_In_Time__c = DateTime.now(),
+                Geo_Location__c = (req.latitude != null && req.longitude != null) ? (String.valueOf(req.latitude) + ', ' + String.valueOf(req.longitude)) : null,
+                Attendance_Status__c = 'Present',
+                Day_Plan__c = req.dayPlan,
+                Day_Plan_Other_Details__c = req.dayPlanOtherDetails,
+                Tour_Plan__c = req.tourPlan,
+                Mode_Of_Transport__c = req.modeOfTransport,
+                Vehicle_Used__c = req.vehicleUsed
             );
+            if (req.latitude != null && req.longitude != null) {
+                att.Punch_In_Location__Latitude__s = req.latitude;
+                att.Punch_In_Location__Longitude__s = req.longitude;
+            }
             insert att;
             resp.message = 'Day started successfully.';
         }
@@ -962,6 +1011,17 @@ global inherited sharing class SfaDynamicRestService {
             Visit__c v = [SELECT Id, Check_In_Time__c FROM Visit__c WHERE Id = :req.visitId LIMIT 1];
             v.Check_Out_Time__c = DateTime.now();
             v.Visit_Status__c = 'Completed';
+            if (String.isNotBlank(req.selfieUrl)) {
+                v.Selfie_Image_URL__c = req.selfieUrl;
+            }
+            if (String.isNotBlank(req.freezerPhotoUrl)) {
+                v.Freezer_Image_URL__c = req.freezerPhotoUrl;
+            }
+            if (String.isNotBlank(req.checkoutComments)) {
+                v.Check_Out_Comments__c = req.checkoutComments;
+            } else if (String.isNotBlank(req.remarks)) {
+                v.Check_Out_Comments__c = req.remarks;
+            }
             update v;
             resp.success = true;
             resp.message = 'Checked out successfully.';
@@ -969,6 +1029,35 @@ global inherited sharing class SfaDynamicRestService {
         }
         resp.success = false;
         resp.message = 'Visit ID is required.';
+        return resp;
+    }
+
+    private static ActionResponse processVisitMissed(ActionRequest req, Id userId) {
+        ActionResponse resp = new ActionResponse();
+        Visit__c v;
+        if (String.isNotBlank(req.visitId)) {
+            v = [SELECT Id FROM Visit__c WHERE Id = :req.visitId LIMIT 1];
+            v.Visit_Status__c = 'Missed';
+            v.Skip_Reason__c = String.isNotBlank(req.missedReason) ? req.missedReason : req.remarks;
+            update v;
+        } else if (String.isNotBlank(req.outletId)) {
+            v = new Visit__c(
+                Outlet__c = req.outletId,
+                Sales_Executive__c = userId,
+                Visit_Status__c = 'Missed',
+                Skip_Reason__c = String.isNotBlank(req.missedReason) ? req.missedReason : req.remarks,
+                Check_In_Time__c = DateTime.now(),
+                Check_Out_Time__c = DateTime.now()
+            );
+            insert v;
+        } else {
+            resp.success = false;
+            resp.message = 'Visit ID or Outlet ID is required for missed visit.';
+            return resp;
+        }
+        resp.success = true;
+        resp.recordId = v.Id;
+        resp.message = 'Visit marked as missed.';
         return resp;
     }
 
