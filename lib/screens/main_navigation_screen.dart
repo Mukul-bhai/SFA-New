@@ -51,6 +51,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       PjpScreen(
         dynamicService: widget.dynamicService,
+        syncService: widget.syncService,
         authService: widget.authService,
       ),
       TargetsScreen(

@@ -4,15 +4,19 @@ import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../services/salesforce_auth_service.dart';
 import '../services/salesforce_dynamic_service.dart';
+import '../services/salesforce_sync_service.dart';
+import '../widgets/start_day_modal.dart';
 import 'outlet_detail_screen.dart';
 
 class PjpScreen extends StatefulWidget {
   final SalesforceDynamicService dynamicService;
+  final SalesforceSyncService? syncService;
   final SalesforceAuthService? authService;
 
   const PjpScreen({
     super.key,
     required this.dynamicService,
+    this.syncService,
     this.authService,
   });
 
@@ -593,6 +597,138 @@ class _PjpScreenState extends State<PjpScreen> {
     );
   }
 
+  Widget _buildStartDayBanner() {
+    final att = widget.dynamicService.attendance;
+    final bool isPunchedIn = att.punchedIn;
+    final bool isPunchedOut = att.punchedOut;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: isPunchedIn && !isPunchedOut
+              ? const Color(0xFFBBF7D0)
+              : (isPunchedOut ? Colors.grey.shade300 : const Color(0xFFBFDBFE)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isPunchedIn && !isPunchedOut
+                  ? const Color(0xFF16A34A).withValues(alpha: 0.1)
+                  : (isPunchedOut ? Colors.grey.shade100 : const Color(0xFF0B5CAB).withValues(alpha: 0.1)),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isPunchedIn && !isPunchedOut
+                  ? Icons.location_on
+                  : (isPunchedOut ? Icons.check_circle : Icons.play_circle_fill),
+              size: 20,
+              color: isPunchedIn && !isPunchedOut
+                  ? const Color(0xFF16A34A)
+                  : (isPunchedOut ? Colors.grey : const Color(0xFF0B5CAB)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isPunchedIn && !isPunchedOut
+                      ? 'Day in Progress (Active)'
+                      : (isPunchedOut ? 'Day Completed' : 'Start Your Working Day'),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF001E3C)),
+                ),
+                Text(
+                  isPunchedIn && !isPunchedOut
+                      ? 'Started at ${att.checkInTime ?? 'Active'}'
+                      : (isPunchedOut
+                          ? 'Today\'s visits & log finalized'
+                          : 'Point 21: Capture tour plan, mode & GPS'),
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+          if (!isPunchedIn && !isPunchedOut)
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF16A34A),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
+              ),
+              onPressed: () {
+                StartDayModal.show(
+                  context,
+                  dynamicService: widget.dynamicService,
+                  syncService: widget.syncService ?? SalesforceSyncService(),
+                  authService: widget.authService,
+                  onDayStatusChanged: () {
+                    setState(() {});
+                  },
+                );
+              },
+              icon: const Icon(Icons.play_arrow, size: 16),
+              label: const Text('Start Day', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            )
+          else if (isPunchedIn && !isPunchedOut)
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
+              ),
+              onPressed: () {
+                showEndDayDialog(
+                  context,
+                  dynamicService: widget.dynamicService,
+                  syncService: widget.syncService ?? SalesforceSyncService(),
+                  authService: widget.authService,
+                  onDayStatusChanged: () {
+                    setState(() {});
+                  },
+                );
+              },
+              icon: const Icon(Icons.stop, size: 16),
+              label: const Text('End Day', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            )
+          else
+            TextButton(
+              onPressed: () {
+                StartDayModal.show(
+                  context,
+                  dynamicService: widget.dynamicService,
+                  syncService: widget.syncService ?? SalesforceSyncService(),
+                  authService: widget.authService,
+                  onDayStatusChanged: () {
+                    setState(() {});
+                  },
+                );
+              },
+              child: const Text('Re-Start', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_selectedBeat != null) {
@@ -636,36 +772,43 @@ class _PjpScreenState extends State<PjpScreen> {
         label: const Text('Create PJP Plan', style: TextStyle(fontWeight: FontWeight.bold)),
         onPressed: _showCreatePjpDialog,
       ),
-      body: pjps.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.route, size: 56, color: Colors.grey),
-                  const SizedBox(height: 12),
-                  const Text('No Permanent Journey Plans found.', style: TextStyle(fontSize: 15, color: Colors.grey)),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0070D2), foregroundColor: Colors.white),
-                    onPressed: _showCreatePjpDialog,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Create First PJP Plan'),
+      body: Column(
+        children: [
+          _buildStartDayBanner(),
+          Expanded(
+            child: pjps.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.route, size: 56, color: Colors.grey),
+                        const SizedBox(height: 12),
+                        const Text('No Permanent Journey Plans found.', style: TextStyle(fontSize: 15, color: Colors.grey)),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0070D2), foregroundColor: Colors.white),
+                          onPressed: _showCreatePjpDialog,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Create First PJP Plan'),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _refreshPjpTree,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.only(left: 16, right: 16, top: 10, bottom: 80),
+                      itemCount: pjps.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, idx) {
+                        final pjp = pjps[idx];
+                        return _buildPjpCard(pjp);
+                      },
+                    ),
                   ),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _refreshPjpTree,
-              child: ListView.separated(
-                padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
-                itemCount: pjps.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, idx) {
-                  final pjp = pjps[idx];
-                  return _buildPjpCard(pjp);
-                },
-              ),
-            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1017,6 +1160,7 @@ class _PjpScreenState extends State<PjpScreen> {
       ),
       body: Column(
         children: [
+          _buildStartDayBanner(),
           // Search & Filter Bar
           Container(
             padding: const EdgeInsets.all(12),

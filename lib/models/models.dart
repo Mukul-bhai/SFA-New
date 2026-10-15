@@ -886,6 +886,9 @@ class VisitModel {
   bool isSkipped;
   String skipReason;
   String? serverVisitId;
+  String? selfieUrl;
+  String? freezerPhotoUrl;
+  String? checkoutComments;
 
   VisitModel({
     required this.retailerId,
@@ -896,6 +899,9 @@ class VisitModel {
     this.isSkipped = false,
     this.skipReason = '',
     this.serverVisitId,
+    this.selfieUrl,
+    this.freezerPhotoUrl,
+    this.checkoutComments,
   });
 
   factory VisitModel.fromJson(Map<String, dynamic> json) {
@@ -908,6 +914,9 @@ class VisitModel {
       isSkipped: json['isSkipped'] ?? false,
       skipReason: json['skipReason'] ?? '',
       serverVisitId: json['serverVisitId'],
+      selfieUrl: json['selfieUrl'] ?? json['selfieImageUrl'],
+      freezerPhotoUrl: json['freezerPhotoUrl'] ?? json['freezerImageUrl'],
+      checkoutComments: json['checkoutComments'] ?? json['remarks'],
     );
   }
 
@@ -920,6 +929,9 @@ class VisitModel {
     'isSkipped': isSkipped,
     'skipReason': skipReason,
     'serverVisitId': serverVisitId,
+    'selfieUrl': selfieUrl,
+    'freezerPhotoUrl': freezerPhotoUrl,
+    'checkoutComments': checkoutComments,
   };
 }
 
@@ -1104,6 +1116,11 @@ class AttendanceModel {
   final String status;
   final double totalDistanceKm;
   final int batteryLevel;
+  final String? dayPlan;
+  final String? dayPlanOtherDetails;
+  final String? tourPlan;
+  final String? modeOfTransport;
+  final String? vehicleUsed;
 
   AttendanceModel({
     required this.id,
@@ -1113,6 +1130,11 @@ class AttendanceModel {
     this.status = 'PRESENT',
     this.totalDistanceKm = 0.0,
     this.batteryLevel = 90,
+    this.dayPlan,
+    this.dayPlanOtherDetails,
+    this.tourPlan,
+    this.modeOfTransport,
+    this.vehicleUsed,
   });
 
   factory AttendanceModel.fromJson(Map<String, dynamic> json) {
@@ -1128,6 +1150,11 @@ class AttendanceModel {
       status: json['status'] ?? 'PRESENT',
       totalDistanceKm: (json['totalDistanceKm'] ?? 0.0).toDouble(),
       batteryLevel: json['batteryLevel'] ?? 90,
+      dayPlan: json['dayPlan'],
+      dayPlanOtherDetails: json['dayPlanOtherDetails'],
+      tourPlan: json['tourPlan'],
+      modeOfTransport: json['modeOfTransport'],
+      vehicleUsed: json['vehicleUsed'],
     );
   }
 
@@ -1139,6 +1166,11 @@ class AttendanceModel {
     'status': status,
     'totalDistanceKm': totalDistanceKm,
     'batteryLevel': batteryLevel,
+    'dayPlan': dayPlan,
+    'dayPlanOtherDetails': dayPlanOtherDetails,
+    'tourPlan': tourPlan,
+    'modeOfTransport': modeOfTransport,
+    'vehicleUsed': vehicleUsed,
   };
 }
 
@@ -1153,6 +1185,11 @@ class AttendanceRecordModel {
   final String? geoLocation;
   final bool isDayActive;
   final String? employeeName;
+  final String? dayPlan;
+  final String? dayPlanOtherDetails;
+  final String? tourPlan;
+  final String? modeOfTransport;
+  final String? vehicleUsed;
 
   AttendanceRecordModel({
     required this.id,
@@ -1164,6 +1201,11 @@ class AttendanceRecordModel {
     this.geoLocation,
     this.isDayActive = false,
     this.employeeName,
+    this.dayPlan,
+    this.dayPlanOtherDetails,
+    this.tourPlan,
+    this.modeOfTransport,
+    this.vehicleUsed,
   });
 
   factory AttendanceRecordModel.fromJson(Map<String, dynamic> json) {
@@ -1177,6 +1219,11 @@ class AttendanceRecordModel {
       geoLocation: json['geoLocation'],
       isDayActive: json['isDayActive'] ?? false,
       employeeName: json['employeeName'],
+      dayPlan: json['dayPlan'],
+      dayPlanOtherDetails: json['dayPlanOtherDetails'],
+      tourPlan: json['tourPlan'],
+      modeOfTransport: json['modeOfTransport'],
+      vehicleUsed: json['vehicleUsed'],
     );
   }
 }

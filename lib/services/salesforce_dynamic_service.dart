@@ -432,6 +432,11 @@ class SalesforceDynamicService {
     String address = 'Field Location',
     String? email,
     String? userId,
+    String? dayPlan,
+    String? dayPlanOtherDetails,
+    String? tourPlan,
+    String? modeOfTransport,
+    String? vehicleUsed,
   }) async {
     try {
       final res = await _dio.post(
@@ -444,6 +449,11 @@ class SalesforceDynamicService {
           'remarks': address,
           'email': email,
           'userId': userId,
+          'dayPlan': dayPlan,
+          'dayPlanOtherDetails': dayPlanOtherDetails,
+          'tourPlan': tourPlan,
+          'modeOfTransport': modeOfTransport,
+          'vehicleUsed': vehicleUsed,
         },
       );
 
@@ -515,11 +525,13 @@ class SalesforceDynamicService {
     }
   }
 
-  // 8. End / Checkout Visit Store
+  // 8. End / Checkout Visit Store (Point 23.7 & 30)
   Future<Map<String, dynamic>> checkoutVisit({
     String notes = 'Visit completed smoothly',
     double? latitude,
     double? longitude,
+    String? selfieUrl,
+    String? freezerPhotoUrl,
   }) async {
     try {
       if (_activeVisitId != null) {
@@ -529,8 +541,11 @@ class SalesforceDynamicService {
             'action': 'visit-checkout',
             'visitId': _activeVisitId,
             'remarks': notes,
+            'checkoutComments': notes,
             'latitude': latitude,
             'longitude': longitude,
+            'selfieUrl': selfieUrl,
+            'freezerPhotoUrl': freezerPhotoUrl,
           },
         );
       }
@@ -547,7 +562,7 @@ class SalesforceDynamicService {
     }
   }
 
-  // 9. Mark Visit Missed with Mandatory Reason
+  // 9. Mark Visit Missed with Mandatory Reason (Point 30)
   Future<Map<String, dynamic>> markVisitMissed({
     required RetailerModel outlet,
     required String reason,
@@ -555,17 +570,25 @@ class SalesforceDynamicService {
   }) async {
     try {
       await _dio.post(
-        '/services/apexrest/api/v1/sfa/dynamic/visit/start',
+        '/services/apexrest/api/v1/sfa/dynamic/visit/missed',
         data: {
-          'action': 'visit-start',
+          'action': 'visit-missed',
           'outletId': outlet.id,
-          'bypassReason': 'MISSED: $reason',
-          'remarks': notes,
+          'visitId': _activeVisitId,
+          'missedReason': reason,
+          'remarks': notes.isNotEmpty ? notes : reason,
         },
       );
-      return {'success': true, 'message': 'Missed visit recorded in Salesforce: $reason'};
+      _activeVisitOutlet = null;
+      _activeVisitId = null;
+      _visitStartTime = null;
+      await fetchDashboard();
+      return {'success': true, 'message': 'Visit marked as missed'};
     } catch (e) {
-      return {'success': true, 'message': 'Missed visit recorded: $reason'};
+      _activeVisitOutlet = null;
+      _activeVisitId = null;
+      _visitStartTime = null;
+      return {'success': true, 'message': 'Visit marked as missed locally'};
     }
   }
 

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../services/order_sharing_service.dart';
 import '../services/salesforce_dynamic_service.dart';
+import '../widgets/visit_checkout_modal.dart';
 
 class VisitHubScreen extends StatefulWidget {
   final RetailerModel outlet;
@@ -411,88 +412,17 @@ class _VisitHubScreenState extends State<VisitHubScreen> with SingleTickerProvid
     }
   }
 
-  Widget _checkoutDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF001E3C))),
-        ],
-      ),
-    );
-  }
 
   Future<void> _handleCheckoutVisit() async {
-    final exitTime = DateTime.now();
-    final diff = exitTime.difference(_visitEntryTime);
-    final durationStr = '${diff.inMinutes} mins ${diff.inSeconds % 60} secs';
-
-    double checkoutLat = _currentLat;
-    double checkoutLon = _currentLon;
-    try {
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium,
-        timeLimit: const Duration(seconds: 4),
-      );
-      checkoutLat = pos.latitude;
-      checkoutLon = pos.longitude;
-    } catch (_) {}
-
-    if (!mounted) return;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Color(0xFF16A34A)),
-            SizedBox(width: 8),
-            Text('Checkout & End Visit', style: TextStyle(fontSize: 16)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Outlet: ${widget.outlet.shopName}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 12),
-            _checkoutDetailRow('Visit Entry Time:', DateFormat('hh:mm:ss a').format(_visitEntryTime)),
-            _checkoutDetailRow('Visit Exit Time:', DateFormat('hh:mm:ss a').format(exitTime)),
-            _checkoutDetailRow('Total Time in Store:', durationStr),
-            _checkoutDetailRow('Exact GPS Coordinates:', '${checkoutLat.toStringAsFixed(4)}, ${checkoutLon.toStringAsFixed(4)}'),
-            const SizedBox(height: 12),
-            const Text(
-              'This will sync store visit completion, exact timings, and GPS to Salesforce.',
-              style: TextStyle(fontSize: 11, color: Colors.black54),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0B5CAB)),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirm Checkout', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+    final completed = await VisitCheckoutModal.show(
+      context,
+      outlet: widget.outlet,
+      visitEntryTime: _visitEntryTime,
+      dynamicService: widget.dynamicService,
+      onVisitCompleted: () {},
     );
 
-    if (confirm == true) {
-      await widget.dynamicService.checkoutVisit(
-        latitude: checkoutLat,
-        longitude: checkoutLon,
-        notes: 'Visit completed ($durationStr)',
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Store visit completed! Exit time: ${DateFormat('hh:mm a').format(exitTime)} ($durationStr)'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    if (completed == true && mounted) {
       Navigator.pop(context);
     }
   }

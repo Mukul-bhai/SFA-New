@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import '../services/salesforce_auth_service.dart';
 import '../services/salesforce_dynamic_service.dart';
 import '../services/salesforce_sync_service.dart';
+import '../widgets/start_day_modal.dart';
 
 class AttendanceExpensesScreen extends StatefulWidget {
   final SalesforceSyncService syncService;
@@ -221,7 +222,7 @@ class _AttendanceExpensesScreenState extends State<AttendanceExpensesScreen> {
         dailyAllowance: da,
         totalAmount: ta + da,
         email: user?.email,
-        userId: user?.id,
+        userId: user?.id, 
       );
     }
     if (mounted) {
@@ -463,6 +464,57 @@ class _AttendanceExpensesScreenState extends State<AttendanceExpensesScreen> {
 
                       // Shift Type & Action Button for Today
                       if (isToday) ...[
+                        if (liveRecord?.dayPlan != null) ...[
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.badge, size: 16, color: Color(0xFF0B5CAB)),
+                                    SizedBox(width: 6),
+                                    Text('Start-Day Tour Details (Point 21)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0B5CAB))),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    Chip(
+                                      visualDensity: VisualDensity.compact,
+                                      backgroundColor: Colors.white,
+                                      avatar: const Icon(Icons.explore, size: 14, color: Color(0xFF0B5CAB)),
+                                      label: Text('Plan: ${liveRecord!.dayPlan}${liveRecord.tourPlan != null ? ' (${liveRecord.tourPlan})' : ''}', style: const TextStyle(fontSize: 11)),
+                                    ),
+                                    if (liveRecord.modeOfTransport != null)
+                                      Chip(
+                                        visualDensity: VisualDensity.compact,
+                                        backgroundColor: Colors.white,
+                                        avatar: const Icon(Icons.directions_car, size: 14, color: Color(0xFF0B5CAB)),
+                                        label: Text('Mode: ${liveRecord.modeOfTransport}', style: const TextStyle(fontSize: 11)),
+                                      ),
+                                    if (liveRecord.vehicleUsed != null)
+                                      Chip(
+                                        visualDensity: VisualDensity.compact,
+                                        backgroundColor: Colors.white,
+                                        avatar: const Icon(Icons.person, size: 14, color: Color(0xFF0B5CAB)),
+                                        label: Text('Vehicle: ${liveRecord.vehicleUsed}', style: const TextStyle(fontSize: 11)),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -505,19 +557,31 @@ class _AttendanceExpensesScreenState extends State<AttendanceExpensesScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               elevation: 2,
                             ),
-                            onPressed: _isPunching ? null : () => _handlePunchAction('PUNCH_IN'),
-                            icon: _isPunching
-                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : const Icon(Icons.play_circle_fill, size: 22),
+                            onPressed: () {
+                              if (widget.dynamicService != null) {
+                                StartDayModal.show(
+                                  context,
+                                  dynamicService: widget.dynamicService!,
+                                  syncService: widget.syncService,
+                                  authService: widget.authService,
+                                  onDayStatusChanged: () {
+                                    _fetchAttendanceForSelectedDate(_selectedDate);
+                                  },
+                                );
+                              } else {
+                                _handlePunchAction('PUNCH_IN');
+                              }
+                            },
+                            icon: const Icon(Icons.play_circle_fill, size: 22),
                             label: const Text(
-                              'START DAY (PUNCH IN)',
+                              'START DAY',
                               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                             ),
                           ),
                           const SizedBox(height: 6),
                           Center(
                             child: Text(
-                              'Auto-captures exact GPS location & verification timestamp',
+                              'Point 21: Auto-captures Day Plan, Geolocation & Verification Timestamp',
                               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                             ),
                           ),
@@ -530,19 +594,31 @@ class _AttendanceExpensesScreenState extends State<AttendanceExpensesScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               elevation: 2,
                             ),
-                            onPressed: _isPunching ? null : () => _handlePunchAction('PUNCH_OUT'),
-                            icon: _isPunching
-                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : const Icon(Icons.stop_circle, size: 22),
+                            onPressed: () {
+                              if (widget.dynamicService != null) {
+                                showEndDayDialog(
+                                  context,
+                                  dynamicService: widget.dynamicService!,
+                                  syncService: widget.syncService,
+                                  authService: widget.authService,
+                                  onDayStatusChanged: () {
+                                    _fetchAttendanceForSelectedDate(_selectedDate);
+                                  },
+                                );
+                              } else {
+                                _handlePunchAction('PUNCH_OUT');
+                              }
+                            },
+                            icon: const Icon(Icons.stop_circle, size: 22),
                             label: const Text(
-                              'END DAY (PUNCH OUT)',
+                              'END DAY',
                               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                             ),
                           ),
                           const SizedBox(height: 6),
                           Center(
                             child: Text(
-                              'Submits closing odometer distance and final route location',
+                              'Point 31: Completes Day & captures End-day GPS and Timestamp',
                               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                             ),
                           ),
@@ -565,7 +641,21 @@ class _AttendanceExpensesScreenState extends State<AttendanceExpensesScreen> {
                                   ),
                                 ),
                                 TextButton(
-                                  onPressed: () => _handlePunchAction('PUNCH_IN'),
+                                  onPressed: () {
+                                    if (widget.dynamicService != null) {
+                                      StartDayModal.show(
+                                        context,
+                                        dynamicService: widget.dynamicService!,
+                                        syncService: widget.syncService,
+                                        authService: widget.authService,
+                                        onDayStatusChanged: () {
+                                          _fetchAttendanceForSelectedDate(_selectedDate);
+                                        },
+                                      );
+                                    } else {
+                                      _handlePunchAction('PUNCH_IN');
+                                    }
+                                  },
                                   child: const Text('Re-Punch', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                                 ),
                               ],
