@@ -280,6 +280,66 @@ class _VisitHubScreenState extends State<VisitHubScreen> with SingleTickerProvid
                 'Total Value: ${currencyFormat.format(_lastOrderTotal)}',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0B5CAB)),
               ),
+              const SizedBox(height: 10),
+
+              // Ordered Products Summary
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F7FF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFCCE4FF)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.inventory_2_outlined, size: 16, color: Color(0xFF0B5CAB)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Total Products: ${_lastSubmittedItems?.length ?? 0} SKUs',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0B5CAB)),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '${_lastSubmittedItems?.fold<double>(0, (s, i) => s + i.quantity).toInt() ?? 0} Total Units',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF0B5CAB)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Divider(height: 1, color: Color(0xFFCCE4FF)),
+                    const SizedBox(height: 8),
+                    if (_lastSubmittedItems != null)
+                      ..._lastSubmittedItems!.map((item) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '• ${item.productName}',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              '${item.quantity.toInt()} pcs • ₹${item.totalAmount.toStringAsFixed(0)}',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                            ),
+                          ],
+                        ),
+                      )),
+                  ],
+                ),
+              ),
               const SizedBox(height: 6),
               const Text(
                 'Updated dynamically in Salesforce Outlet Outstanding Balance & Executive Revenue.',

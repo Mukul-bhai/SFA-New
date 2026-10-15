@@ -432,6 +432,8 @@ class SalesforceSyncService {
               'orderDate': order.orderDate.toIso8601String(),
               'items': order.items.map((i) => {
                 'productId': i.productId,
+                'productName': i.productName,
+                'sku': i.productCode,
                 'quantity': i.quantity,
                 'freeQuantity': i.freeQuantity,
                 'unitPrice': i.unitPrice,

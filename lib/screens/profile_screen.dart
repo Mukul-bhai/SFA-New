@@ -305,30 +305,93 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final isSynced = order.syncStatus == 'SYNCED';
                 return Card(
                   elevation: 1,
-                  margin: const EdgeInsets.only(bottom: 8),
+                  margin: const EdgeInsets.only(bottom: 10),
                   color: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: isSynced ? Colors.green.shade50 : Colors.amber.shade50,
-                      child: Icon(isSynced ? Icons.cloud_done : Icons.cloud_upload, color: isSynced ? const Color(0xFF16A34A) : Colors.amber.shade800),
-                    ),
-                    title: Text('${order.retailerName} • ₹${order.totalAmount.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    subtitle: Text('${DateFormat('dd MMM hh:mm a').format(order.orderDate)} • ${order.serverOrderId ?? 'Local Queue'}'),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: isSynced ? Colors.green.shade100 : Colors.amber.shade100,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        order.syncStatus,
-                        style: TextStyle(
-                          color: isSynced ? Colors.green.shade800 : Colors.brown,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isSynced ? Colors.green.shade50 : Colors.amber.shade50,
+                            child: Icon(isSynced ? Icons.cloud_done : Icons.cloud_upload, color: isSynced ? const Color(0xFF16A34A) : Colors.amber.shade800),
+                          ),
+                          title: Text('${order.retailerName} • ₹${order.totalAmount.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('${DateFormat('dd MMM hh:mm a').format(order.orderDate)} • ${order.serverOrderId ?? 'Local Queue'}'),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEBF5FF),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      '${order.totalProductsCount} Products (${order.totalUnitsCount.toInt()} Units)',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0070D2)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isSynced ? Colors.green.shade100 : Colors.amber.shade100,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              order.syncStatus,
+                              style: TextStyle(
+                                color: isSynced ? Colors.green.shade800 : Colors.brown,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        if (order.items.isNotEmpty) ...[
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Divider(height: 12),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            child: const Text(
+                              'Ordered Items:',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+                            ),
+                          ),
+                          ...order.items.map((item) => Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '• ${item.productName}',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  '${item.quantity.toInt()} pcs • ₹${item.totalAmount.toStringAsFixed(0)}',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0070D2)),
+                                ),
+                              ],
+                            ),
+                          )),
+                          const SizedBox(height: 4),
+                        ],
+                      ],
                     ),
                   ),
                 );

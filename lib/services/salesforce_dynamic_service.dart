@@ -705,6 +705,8 @@ class SalesforceDynamicService {
     try {
       final payloadItems = items.map((i) => {
         'productId': i.productId,
+        'productName': i.productName,
+        'sku': i.productCode,
         'quantity': i.quantity,
         'unitPrice': i.unitPrice,
         'grossAmount': i.unitPrice * i.quantity,

@@ -58,6 +58,9 @@ class PreviousOrderModel {
   final DateTime orderDate;
   final double totalAmount;
   final String status;
+  final int? totalProductsCount;
+  final double? totalQuantity;
+  final String? productNames;
 
   PreviousOrderModel({
     required this.id,
@@ -65,6 +68,9 @@ class PreviousOrderModel {
     required this.orderDate,
     required this.totalAmount,
     this.status = 'Confirmed',
+    this.totalProductsCount,
+    this.totalQuantity,
+    this.productNames,
   });
 
   factory PreviousOrderModel.fromJson(Map<String, dynamic> json) {
@@ -74,10 +80,13 @@ class PreviousOrderModel {
     }
     return PreviousOrderModel(
       id: json['id'] ?? '',
-      orderNumber: json['orderNumber'] ?? json['orderNumber'] ?? 'ORD-000',
+      orderNumber: json['orderNumber'] ?? json['name'] ?? 'ORD-000',
       orderDate: parsedDate,
       totalAmount: (json['totalAmount'] ?? 0.0).toDouble(),
       status: json['status'] ?? 'Confirmed',
+      totalProductsCount: json['totalProductsCount'] != null ? (json['totalProductsCount'] as num).toInt() : null,
+      totalQuantity: json['totalQuantity'] != null ? (json['totalQuantity'] as num).toDouble() : null,
+      productNames: json['productNames'],
     );
   }
 
@@ -87,6 +96,9 @@ class PreviousOrderModel {
     'orderDate': orderDate.toIso8601String(),
     'totalAmount': totalAmount,
     'status': status,
+    'totalProductsCount': totalProductsCount,
+    'totalQuantity': totalQuantity,
+    'productNames': productNames,
   };
 }
 
@@ -929,6 +941,11 @@ class LocalOrderModel {
     );
   }
 
+  int get totalProductsCount => items.length;
+  double get totalUnitsCount => items.fold(0.0, (sum, i) => sum + i.quantity);
+  String get productNamesSummary => items.map((i) => '${i.productName} (${i.quantity.toInt()} pcs)').join(', ');
+  List<String> get productNames => items.map((i) => i.productName).toList();
+
   Map<String, dynamic> toJson() => {
     'localId': localId,
     'retailerId': retailerId,
@@ -944,6 +961,10 @@ class LocalOrderModel {
     'serverOrderId': serverOrderId,
     'syncMessage': syncMessage,
     'mustSellNonPurchaseReasons': mustSellNonPurchaseReasons,
+    'totalProductsCount': totalProductsCount,
+    'totalUnitsCount': totalUnitsCount,
+    'productNamesSummary': productNamesSummary,
+    'productNames': productNames,
   };
 }
 

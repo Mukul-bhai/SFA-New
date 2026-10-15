@@ -761,12 +761,29 @@ class _OutletDetailScreenState extends State<OutletDetailScreen> {
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(ord.orderNumber, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0B5CAB))),
-                        Text(dateStr, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(ord.orderNumber, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0B5CAB))),
+                          Text(dateStr, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                          if (ord.totalProductsCount != null || (ord.productNames != null && ord.productNames!.isNotEmpty)) ...[
+                            const SizedBox(height: 2),
+                            if (ord.totalProductsCount != null)
+                              Text(
+                                '${ord.totalProductsCount} Products • ${ord.totalQuantity?.toInt() ?? 0} Units',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0070D2)),
+                              ),
+                            if (ord.productNames != null && ord.productNames!.isNotEmpty)
+                              Text(
+                                ord.productNames!,
+                                style: const TextStyle(fontSize: 10, color: Color(0xFF475569)),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ],
+                      ),
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
