@@ -8,15 +8,25 @@ class SalesforceSyncService {
   static const String instanceUrl = SalesforceAuthService.instanceUrl;
   static String get bearerToken => SalesforceAuthService.defaultBearerToken;
 
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: instanceUrl,
-    connectTimeout: const Duration(seconds: 15),
-    receiveTimeout: const Duration(seconds: 15),
-    headers: {
-      'Authorization': 'Bearer $bearerToken',
-      'Content-Type': 'application/json',
-    },
-  ));
+  late final Dio _dio;
+
+  SalesforceSyncService() {
+    _dio = Dio(BaseOptions(
+      baseUrl: instanceUrl,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
+      headers: {
+        'Authorization': 'Bearer $bearerToken',
+        'Content-Type': 'application/json',
+      },
+    ));
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        options.headers['Authorization'] = 'Bearer ${SalesforceAuthService.defaultBearerToken}';
+        return handler.next(options);
+      },
+    ));
+  }
 
   List<LocalOrderModel> _outbox = [];
   List<BeatModel> _cachedBeats = [];
@@ -271,7 +281,7 @@ class SalesforceSyncService {
   // Fetch Live Bootstrap Payload from Salesforce
   Future<void> fetchBootstrapData() async {
     try {
-      final res = await _dio.get('/services/apexrest/api/v1/sfa/mobile/bootstrap');
+      final res = await _dio.get('/services/apexrest/api/v1/sync/bootstrap');
       if (res.statusCode == 200 && res.data != null) {
         final data = res.data;
         if (data['success'] == true) {

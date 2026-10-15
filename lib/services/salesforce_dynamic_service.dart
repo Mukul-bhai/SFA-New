@@ -162,6 +162,12 @@ class SalesforceDynamicService {
         'Content-Type': 'application/json',
       },
     ));
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        options.headers['Authorization'] = 'Bearer ${SalesforceAuthService.defaultBearerToken}';
+        return handler.next(options);
+      },
+    ));
     _initCleanData();
   }
 

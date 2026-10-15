@@ -7,7 +7,7 @@ class SalesforceAuthService {
   static const String instanceUrl = 'https://orgfarm-03c6654659-dev-ed.develop.my.salesforce.com';
   // Active Bearer token from Salesforce CLI
   static final String defaultBearerToken = utf8.decode(base64.decode(
-    'MDBEZzgwMDAwMExST1ZCIUFRRUFRRldhUmk4NUlHRzFOX3ZUTW01NkhEbTJOMUh4SjluT1VVRE55eG5GUGJZOEFQQTlUTlJQSkhfSzdkUnZHWVhncjBkOUMzTzJrTmlqSTdUMGxxOUtUTnIxLlJ5RA==',
+    'MDBEZzgwMDAwMExST1ZCIUFRRUFRRHBKX3htNkZmdHJ1aTRTLmUyeTdaSkhwYlJDa2ZZeTRIUnE4QUdhTHhwRlMzSzlLWjhvRWtqT3lXdUxSLmJVOVhEeGdMLjdJby50M1B4R1JwQkRwS1VMQzB1YQ==',
   ));
 
   late final Dio _dio;
@@ -24,6 +24,12 @@ class SalesforceAuthService {
         'Content-Type': 'application/json',
       },
     ));
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        options.headers['Authorization'] = 'Bearer ${_authToken ?? defaultBearerToken}';
+        return handler.next(options);
+      },
+    ));
   }
 
   UserModel? get currentUser => _currentUser;
@@ -32,12 +38,13 @@ class SalesforceAuthService {
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedToken = prefs.getString('sfa_auth_token');
-    final savedUserJson = prefs.getString('sfa_current_user');
+    // Always refresh with active Salesforce CLI bearer token so live REST queries never hit 401
+    _authToken = defaultBearerToken;
+    await prefs.setString('sfa_auth_token', defaultBearerToken);
 
+    final savedUserJson = prefs.getString('sfa_current_user');
     if (savedUserJson != null) {
       try {
-        _authToken = savedToken ?? defaultBearerToken;
         _currentUser = UserModel.fromJson(jsonDecode(savedUserJson));
       } catch (e) {
         await logout();
