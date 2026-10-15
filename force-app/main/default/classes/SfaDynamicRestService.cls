@@ -105,6 +105,9 @@ global inherited sharing class SfaDynamicRestService {
         public Date expiryDate;
         public String productImage;
         public Boolean isActive;
+        public String sellClassification;
+        public Map<String, String> regionClassifications;
+        public List<String> nonPurchaseReasons;
     }
 
     global class PJPTreeResponse {
@@ -181,6 +184,7 @@ global inherited sharing class SfaDynamicRestService {
         public Decimal totalAmount;
         public String appliedSchemeId;
         public String schemesApplied;
+        public String mustSellNonPurchaseReasons;
         public List<OrderItemRequest> items;
 
         // Stock check / Return data
@@ -336,8 +340,20 @@ global inherited sharing class SfaDynamicRestService {
             List<SchemeDTO> resp = getDynamicSchemes();
             res.responseBody = Blob.valueOf(JSON.serialize(resp));
         } else if (path.endsWith('/products')) {
-            List<ProductDTO> resp = getDynamicProducts();
+            String regionParam = req.params != null ? req.params.get('region') : null;
+            if (String.isBlank(regionParam) && req.params != null) {
+                regionParam = req.params.get('state');
+            }
+            List<ProductDTO> resp = getDynamicProducts(regionParam);
             res.responseBody = Blob.valueOf(JSON.serialize(resp));
+        } else if (path.endsWith('/product-region-mappings')) {
+            List<Product_Region_Mapping__c> mappings = [
+                SELECT Id, Name, Product__c, Product__r.Name, Region__c, Sell_Classification__c, Priority__c, Is_Active__c
+                FROM Product_Region_Mapping__c
+                WHERE Is_Active__c = true
+                ORDER BY Region__c, Priority__c
+            ];
+            res.responseBody = Blob.valueOf(JSON.serialize(mappings));
         } else if (path.endsWith('/pjp-tree')) {
             PJPTreeResponse resp = getDynamicPJPTree(currentUserId);
             res.responseBody = Blob.valueOf(JSON.serialize(resp));
@@ -652,14 +668,79 @@ global inherited sharing class SfaDynamicRestService {
         return listDTO;
     }
 
-    // 4. Dynamic Products
+    // 4. Dynamic Products with Region-Wise Sell Classifications (Must Sell, Focused Sell, Suggested Sell)
+    private static void ensureRegionMappings() {
+        Integer count = [SELECT count() FROM Product_Region_Mapping__c LIMIT 1];
+        if (count > 0) return;
+
+        List<Product__c> prods = [SELECT Id, Name FROM Product__c LIMIT 100];
+        if (prods.isEmpty()) return;
+
+        List<Product_Region_Mapping__c> toInsert = new List<Product_Region_Mapping__c>();
+        for (Product__c p : prods) {
+            String pName = p.Name != null ? p.Name.toLowerCase() : '';
+            if (pName.contains('parle') || pName.contains('biscuit')) {
+                // Parle-G: Must Sell in MP, Focused Sell in Karnataka, Must Sell in Maharashtra
+                toInsert.add(new Product_Region_Mapping__c(Product__c = p.Id, Region__c = 'Madhya Pradesh', Sell_Classification__c = 'Must Sell', Priority__c = 1, Is_Active__c = true));
+                toInsert.add(new Product_Region_Mapping__c(Product__c = p.Id, Region__c = 'Karnataka', Sell_Classification__c = 'Focused Sell', Priority__c = 2, Is_Active__c = true));
+                toInsert.add(new Product_Region_Mapping__c(Product__c = p.Id, Region__c = 'Maharashtra', Sell_Classification__c = 'Must Sell', Priority__c = 1, Is_Active__c = true));
+            } else if (pName.contains('malkist') || pName.contains('cracker')) {
+                // Malkist: Focused Sell in MP, Must Sell in Karnataka
+                toInsert.add(new Product_Region_Mapping__c(Product__c = p.Id, Region__c = 'Madhya Pradesh', Sell_Classification__c = 'Focused Sell', Priority__c = 1, Is_Active__c = true));
+                toInsert.add(new Product_Region_Mapping__c(Product__c = p.Id, Region__c = 'Karnataka', Sell_Classification__c = 'Must Sell', Priority__c = 1, Is_Active__c = true));
+                toInsert.add(new Product_Region_Mapping__c(Product__c = p.Id, Region__c = 'Maharashtra', Sell_Classification__c = 'Focused Sell', Priority__c = 2, Is_Active__c = true));
+            } else if (pName.contains('cookie') || pName.contains('hide') || pName.contains('snack')) {
+                // Multi Cookie / Hide & Seek: Suggested Sell in MP and Karnataka
+                toInsert.add(new Product_Region_Mapping__c(Product__c = p.Id, Region__c = 'Madhya Pradesh', Sell_Classification__c = 'Suggested Sell', Priority__c = 1, Is_Active__c = true));
+                toInsert.add(new Product_Region_Mapping__c(Product__c = p.Id, Region__c = 'Karnataka', Sell_Classification__c = 'Suggested Sell', Priority__c = 1, Is_Active__c = true));
+                toInsert.add(new Product_Region_Mapping__c(Product__c = p.Id, Region__c = 'Maharashtra', Sell_Classification__c = 'Suggested Sell', Priority__c = 1, Is_Active__c = true));
+            }
+        }
+        if (!toInsert.isEmpty()) {
+            Database.insert(toInsert, false);
+        }
+    }
+
     private static List<ProductDTO> getDynamicProducts() {
+        return getDynamicProducts(null);
+    }
+
+    private static List<ProductDTO> getDynamicProducts(String filterRegion) {
         List<ProductDTO> listDTO = new List<ProductDTO>();
+        try {
+            ensureRegionMappings();
+        } catch (Exception e) {}
+
+        Map<Id, Map<String, String>> regionMap = new Map<Id, Map<String, String>>();
+        for (Product_Region_Mapping__c prm : [
+            SELECT Product__c, Region__c, Sell_Classification__c
+            FROM Product_Region_Mapping__c
+            WHERE Is_Active__c = true AND Product__c != null
+            ORDER BY Priority__c ASC
+        ]) {
+            if (!regionMap.containsKey(prm.Product__c)) {
+                regionMap.put(prm.Product__c, new Map<String, String>());
+            }
+            if (String.isNotBlank(prm.Region__c)) {
+                regionMap.get(prm.Product__c).put(prm.Region__c, prm.Sell_Classification__c);
+                regionMap.get(prm.Product__c).put(prm.Region__c.toLowerCase(), prm.Sell_Classification__c);
+            }
+        }
+
+        List<String> defaultReasons = new List<String>{
+            'Stock Available',
+            'Low demand',
+            'Season expired',
+            'No product demand',
+            'Non movable',
+            'Other'
+        };
+
         for (Product__c p : [
             SELECT Id, Name, Product_Code__c, SKU__c, Category__c, Brand__c, Sub_Brand__c, Brand_Alias__c,
                    Flavour__c, Variant__c, Package_Type__c, Unit_Conversion__c, Batch_No__c, Quantity__c,
                    Available_Stock__c, MRP__c, RBP__c, GST_Percentage__c, Manufacturing_Date__c, Expiry_Date__c,
-                   Product_Image__c, Is_Active__c
+                   Product_Image__c, Is_Active__c, Sell_Classification__c
             FROM Product__c
             WHERE Is_Active__c = true
             ORDER BY Brand__c, Name
@@ -687,6 +768,26 @@ global inherited sharing class SfaDynamicRestService {
             d.expiryDate = p.Expiry_Date__c;
             d.productImage = p.Product_Image__c;
             d.isActive = p.Is_Active__c;
+
+            String baseClass = p.Sell_Classification__c != null ? p.Sell_Classification__c : 'Regular';
+            Map<String, String> pRegions = regionMap.containsKey(p.Id) ? regionMap.get(p.Id) : new Map<String, String>();
+            d.regionClassifications = pRegions;
+            d.nonPurchaseReasons = defaultReasons;
+
+            if (String.isNotBlank(filterRegion)) {
+                String regKey = filterRegion.trim();
+                String regLower = regKey.toLowerCase();
+                if (pRegions.containsKey(regKey)) {
+                    d.sellClassification = pRegions.get(regKey);
+                } else if (pRegions.containsKey(regLower)) {
+                    d.sellClassification = pRegions.get(regLower);
+                } else {
+                    d.sellClassification = baseClass;
+                }
+            } else {
+                d.sellClassification = baseClass;
+            }
+
             listDTO.add(d);
         }
         return listDTO;
@@ -1075,6 +1176,7 @@ global inherited sharing class SfaDynamicRestService {
                 Gross_Amount__c = req.grossAmount,
                 Tax_Amount__c = req.taxAmount,
                 Total_Amount__c = req.totalAmount,
+                Must_Sell_Non_Purchase_Reasons__c = req.mustSellNonPurchaseReasons,
                 Status__c = 'Draft'
             );
             insert ord;

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sell_Classification__c</fullName>
+    <description>Classification in this region: Must Sell, Focused Sell, Suggested Sell, or Regular</description>
+    <label>Sell Classification</label>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Must Sell</fullName>
+                <default>true</default>
+                <label>Must Sell</label>
+            </value>
+            <value>
+                <fullName>Focused Sell</fullName>
+                <default>false</default>
+                <label>Focused Sell</label>
+            </value>
+            <value>
+                <fullName>Suggested Sell</fullName>
+                <default>false</default>
+                <label>Suggested Sell</label>
+            </value>
+            <value>
+                <fullName>Regular</fullName>
+                <default>false</default>
+                <label>Regular</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Must_Sell_Audit_Notes__c</fullName>
+    <description>Audit notes for Must-Sell product push during the visit</description>
+    <label>Must Sell Audit Notes</label>
+    <length>2000</length>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

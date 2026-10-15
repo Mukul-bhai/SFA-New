@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Must_Sell_Non_Purchase_Reasons__c</fullName>
+    <description>Records reason if outlet did not purchase mandatory Must Sell products</description>
+    <label>Must Sell Non Purchase Reasons</label>
+    <length>2000</length>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>
