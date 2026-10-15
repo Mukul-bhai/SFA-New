@@ -164,6 +164,9 @@ global inherited sharing class SfaDynamicRestService {
         public Datetime orderDate;
         public Decimal totalAmount;
         public String status;
+        public Integer totalProductsCount;
+        public Decimal totalQuantity;
+        public String productNames;
     }
 
     // Generic Action Request
@@ -293,6 +296,7 @@ global inherited sharing class SfaDynamicRestService {
 
     global class OrderItemRequest {
         public String productId;
+        public String productName;
         public String sku;
         public Decimal quantity;
         public Decimal unitPrice;
@@ -826,7 +830,8 @@ global inherited sharing class SfaDynamicRestService {
         // Previous orders map by Outlet
         Map<Id, List<OrderSummaryDTO>> outletOrders = new Map<Id, List<OrderSummaryDTO>>();
         for (Order__c o : [
-            SELECT Id, Name, Outlet__c, Total_Amount__c, Status__c, Order_Date__c, CreatedDate 
+            SELECT Id, Name, Outlet__c, Total_Amount__c, Status__c, Order_Date__c, CreatedDate,
+                   Total_Products_Count__c, Total_Quantity__c, Product_Names__c 
             FROM Order__c 
             ORDER BY CreatedDate DESC 
             LIMIT 50
@@ -841,6 +846,9 @@ global inherited sharing class SfaDynamicRestService {
                 os.orderDate = o.Order_Date__c != null ? o.Order_Date__c : o.CreatedDate;
                 os.totalAmount = o.Total_Amount__c;
                 os.status = o.Status__c;
+                os.totalProductsCount = o.Total_Products_Count__c != null ? Integer.valueOf(o.Total_Products_Count__c) : null;
+                os.totalQuantity = o.Total_Quantity__c;
+                os.productNames = o.Product_Names__c;
                 outletOrders.get(o.Outlet__c).add(os);
             }
         }
@@ -1166,6 +1174,42 @@ global inherited sharing class SfaDynamicRestService {
         ActionResponse resp = new ActionResponse();
         Savepoint sp = Database.setSavepoint();
         try {
+            // Collect product IDs if any to query names from Product__c
+            Set<Id> prodIds = new Set<Id>();
+            if (req.items != null) {
+                for (OrderItemRequest item : req.items) {
+                    if (String.isNotBlank(item.productId)) {
+                        try { prodIds.add((Id) item.productId); } catch (Exception e) {}
+                    }
+                }
+            }
+            Map<Id, Product__c> prodMap = new Map<Id, Product__c>();
+            if (!prodIds.isEmpty()) {
+                prodMap = new Map<Id, Product__c>([SELECT Id, Name, Product_Code__c FROM Product__c WHERE Id IN :prodIds]);
+            }
+
+            // Calculate totals and compile product names summary
+            List<String> productNamesList = new List<String>();
+            Decimal totalQuantity = 0;
+            Integer totalProductsCount = (req.items != null) ? req.items.size() : 0;
+
+            if (req.items != null) {
+                for (OrderItemRequest item : req.items) {
+                    String pName = String.isNotBlank(item.productName) ? item.productName : null;
+                    if (pName == null && prodMap.containsKey((Id)item.productId)) {
+                        pName = prodMap.get((Id)item.productId).Name;
+                    }
+                    if (String.isBlank(pName)) {
+                        pName = String.isNotBlank(item.sku) ? item.sku : 'Product Item';
+                    }
+                    Decimal qty = item.quantity != null ? item.quantity : 1;
+                    totalQuantity += qty;
+                    productNamesList.add(pName + ' (' + qty.intValue() + ' pcs)');
+                }
+            }
+
+            String productNamesSummary = String.join(productNamesList, ', ');
+
             Order__c ord = new Order__c(
                 Outlet__c = req.outletId,
                 Visit__c = req.visitId,
@@ -1176,6 +1220,9 @@ global inherited sharing class SfaDynamicRestService {
                 Gross_Amount__c = req.grossAmount,
                 Tax_Amount__c = req.taxAmount,
                 Total_Amount__c = req.totalAmount,
+                Total_Quantity__c = totalQuantity,
+                Total_Products_Count__c = totalProductsCount,
+                Product_Names__c = productNamesSummary,
                 Must_Sell_Non_Purchase_Reasons__c = req.mustSellNonPurchaseReasons,
                 Status__c = 'Draft'
             );
@@ -1184,9 +1231,29 @@ global inherited sharing class SfaDynamicRestService {
             if (req.items != null && !req.items.isEmpty()) {
                 List<Order_Line__c> lines = new List<Order_Line__c>();
                 for (OrderItemRequest item : req.items) {
+                    String pName = String.isNotBlank(item.productName) ? item.productName : null;
+                    if (pName == null && prodMap.containsKey((Id)item.productId)) {
+                        pName = prodMap.get((Id)item.productId).Name;
+                    }
+                    if (String.isBlank(pName)) {
+                        pName = String.isNotBlank(item.sku) ? item.sku : 'Product Line';
+                    }
+
+                    Id validProdCustomId = null;
+                    if (String.isNotBlank(item.productId)) {
+                        try {
+                            Id parsedId = (Id) item.productId;
+                            if (prodMap.containsKey(parsedId)) {
+                                validProdCustomId = parsedId;
+                            }
+                        } catch (Exception e) {}
+                    }
+
                     lines.add(new Order_Line__c(
                         Order__c = ord.Id,
-                        Product_Custom__c = item.productId,
+                        Name = pName.left(80),
+                        Product_Name__c = pName,
+                        Product_Custom__c = validProdCustomId,
                         SKU__c = item.sku,
                         Quantity__c = item.quantity,
                         Unit_Price__c = item.unitPrice,
