@@ -98,6 +98,7 @@ class RetailerModel {
   final String shopName;
   final String phone;
   final String address;
+  final String state;
   final double latitude;
   final double longitude;
   final double geofenceRadius;
@@ -120,6 +121,7 @@ class RetailerModel {
     required this.shopName,
     required this.phone,
     this.address = 'Station Road, Mumbai',
+    this.state = 'Madhya Pradesh',
     required this.latitude,
     required this.longitude,
     this.geofenceRadius = 100.0,
@@ -162,6 +164,7 @@ class RetailerModel {
       shopName: json['shopName'] ?? json['name'] ?? '',
       phone: json['phone'] ?? '+91 98765 43210',
       address: json['address'] ?? 'Mumbai, MH',
+      state: json['state'] ?? 'Madhya Pradesh',
       latitude: (json['latitude'] ?? 19.0760).toDouble(),
       longitude: (json['longitude'] ?? 72.8777).toDouble(),
       geofenceRadius: (json['geofenceRadius'] ?? 100.0).toDouble(),
@@ -182,6 +185,7 @@ class RetailerModel {
     'shopName': shopName,
     'phone': phone,
     'address': address,
+    'state': state,
     'latitude': latitude,
     'longitude': longitude,
     'geofenceRadius': geofenceRadius,
@@ -342,6 +346,9 @@ class ProductModel {
   final double gstRate;
   final String barcode;
   final double availableStock;
+  final String sellClassification; // 'Regular', 'Must Sell', 'Focused Sell', 'Suggested Sell'
+  final Map<String, String> regionClassifications; // e.g. {'Madhya Pradesh': 'Must Sell', 'Karnataka': 'Focused Sell'}
+  final List<String> nonPurchaseReasons;
 
   ProductModel({
     required this.id,
@@ -357,9 +364,63 @@ class ProductModel {
     this.gstRate = 18.0,
     this.barcode = '',
     this.availableStock = 100.0,
+    this.sellClassification = 'Regular',
+    this.regionClassifications = const {},
+    this.nonPurchaseReasons = const [
+      'Stock Available',
+      'Low demand',
+      'Season expired',
+      'No product demand',
+      'Non movable',
+      'Other',
+    ],
   });
 
+  /// Resolves the effective sell classification for a specific region or state
+  String getSellClassificationForRegion(String? regionOrState) {
+    if (regionOrState != null && regionOrState.trim().isNotEmpty) {
+      final clean = regionOrState.trim().toLowerCase();
+      for (final entry in regionClassifications.entries) {
+        if (entry.key.trim().toLowerCase() == clean) {
+          return entry.value;
+        }
+      }
+    }
+    return sellClassification.isNotEmpty ? sellClassification : 'Regular';
+  }
+
+  bool isMustSellInRegion(String? regionOrState) =>
+      getSellClassificationForRegion(regionOrState).toLowerCase() == 'must sell';
+
+  bool isFocusedSellInRegion(String? regionOrState) =>
+      getSellClassificationForRegion(regionOrState).toLowerCase() == 'focused sell';
+
+  bool isSuggestedSellInRegion(String? regionOrState) =>
+      getSellClassificationForRegion(regionOrState).toLowerCase() == 'suggested sell';
+
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    Map<String, String> regClass = {};
+    if (json['regionClassifications'] is Map) {
+      final rawMap = json['regionClassifications'] as Map;
+      rawMap.forEach((k, v) {
+        if (k != null && v != null) {
+          regClass[k.toString()] = v.toString();
+        }
+      });
+    }
+
+    List<String> reasons = [
+      'Stock Available',
+      'Low demand',
+      'Season expired',
+      'No product demand',
+      'Non movable',
+      'Other',
+    ];
+    if (json['nonPurchaseReasons'] is List) {
+      reasons = (json['nonPurchaseReasons'] as List).map((e) => e.toString()).toList();
+    }
+
     return ProductModel(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
@@ -374,6 +435,9 @@ class ProductModel {
       gstRate: (json['gstRate'] ?? 18.0).toDouble(),
       barcode: json['barcode'] ?? '',
       availableStock: (json['availableStock'] ?? 100.0).toDouble(),
+      sellClassification: json['sellClassification'] ?? 'Regular',
+      regionClassifications: regClass,
+      nonPurchaseReasons: reasons,
     );
   }
 
@@ -391,6 +455,9 @@ class ProductModel {
     'gstRate': gstRate,
     'barcode': barcode,
     'availableStock': availableStock,
+    'sellClassification': sellClassification,
+    'regionClassifications': regionClassifications,
+    'nonPurchaseReasons': nonPurchaseReasons,
   };
 }
 
@@ -823,6 +890,7 @@ class LocalOrderModel {
   String syncStatus;
   String? serverOrderId;
   String? syncMessage;
+  String? mustSellNonPurchaseReasons;
 
   LocalOrderModel({
     required this.localId,
@@ -838,6 +906,7 @@ class LocalOrderModel {
     this.syncStatus = 'QUEUED',
     this.serverOrderId,
     this.syncMessage,
+    this.mustSellNonPurchaseReasons,
   });
 
   factory LocalOrderModel.fromJson(Map<String, dynamic> json) {
@@ -856,6 +925,7 @@ class LocalOrderModel {
       syncStatus: json['syncStatus'] ?? 'QUEUED',
       serverOrderId: json['serverOrderId'],
       syncMessage: json['syncMessage'],
+      mustSellNonPurchaseReasons: json['mustSellNonPurchaseReasons'],
     );
   }
 
@@ -873,6 +943,7 @@ class LocalOrderModel {
     'syncStatus': syncStatus,
     'serverOrderId': serverOrderId,
     'syncMessage': syncMessage,
+    'mustSellNonPurchaseReasons': mustSellNonPurchaseReasons,
   };
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../services/salesforce_sync_service.dart';
+import '../widgets/must_sell_reason_modal.dart';
 
 class VisitOrderScreen extends StatefulWidget {
   final SalesforceSyncService syncService;
@@ -19,6 +20,10 @@ class _VisitOrderScreenState extends State<VisitOrderScreen> with SingleTickerPr
   late TabController _tabController;
   final Map<String, int> _cartQuantities = {};
   final _uuid = const Uuid();
+
+  // Region and category filter state
+  String _activeRegion = 'Madhya Pradesh';
+  String _selectedSellFilter = 'All';
 
   // Survey state
   int _surveyRating = 4;
@@ -134,6 +139,31 @@ class _VisitOrderScreenState extends State<VisitOrderScreen> with SingleTickerPr
   }
 
   Future<void> _handlePlaceOrder(RetailerModel retailer) async {
+    // Enterprise BRD Rule: Must-Sell compliance for active region
+    final allProducts = widget.syncService.products;
+    final mustSellProducts = allProducts.where((p) => p.isMustSellInRegion(_activeRegion)).toList();
+    final unpurchasedMustSell = mustSellProducts.where((p) => (_cartQuantities[p.id] ?? 0) <= 0).toList();
+
+    String? mustSellReasonsSummary;
+    if (unpurchasedMustSell.isNotEmpty) {
+      final reasons = await MustSellReasonModal.show(
+        context: context,
+        unpurchasedMustSellProducts: unpurchasedMustSell,
+        region: _activeRegion,
+        outletName: retailer.name,
+        onQuickAddProduct: (prodId) {
+          setState(() {
+            _cartQuantities[prodId] = (_cartQuantities[prodId] ?? 0) + 1;
+          });
+        },
+      );
+
+      if (reasons == null) return;
+      if (reasons.isNotEmpty) {
+        mustSellReasonsSummary = reasons.entries.map((e) => '${e.key}: ${e.value}').join('; ');
+      }
+    }
+
     final summary = _calculateOrderSummary();
     final items = summary['items'] as List<OrderItemModel>;
     if (items.isEmpty) return;
@@ -177,6 +207,7 @@ class _VisitOrderScreenState extends State<VisitOrderScreen> with SingleTickerPr
       distributorId: retailer.primaryDistributorId,
       orderDate: DateTime.now(),
       syncStatus: 'QUEUED',
+      mustSellNonPurchaseReasons: mustSellReasonsSummary,
     );
 
     await widget.syncService.queueOrder(newOrder);
@@ -322,91 +353,224 @@ class _VisitOrderScreenState extends State<VisitOrderScreen> with SingleTickerPr
   }
 
   Widget _buildTakeOrderTab(RetailerModel retailer, Map<String, dynamic> summary) {
-    final products = widget.syncService.products;
+    final allProducts = widget.syncService.products;
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: products.length + 1,
-      itemBuilder: (ctx, index) {
-        if (index == 0) {
-          // Top Active Schemes Banner
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.amber.shade300),
-            ),
-            child: Row(
-              children: const [
-                Icon(Icons.local_offer, color: Colors.amber, size: 24),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Active Schemes: Monsoon Boost (Buy 10 Get 1 Free) + 5% off above ₹5K, 10% off above ₹10K',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.brown),
+    final mustSellProducts = allProducts.where((p) => p.isMustSellInRegion(_activeRegion)).toList();
+    final focusedSellProducts = allProducts.where((p) => p.isFocusedSellInRegion(_activeRegion)).toList();
+    final suggestedSellProducts = allProducts.where((p) => p.isSuggestedSellInRegion(_activeRegion)).toList();
+
+    List<ProductModel> displayedProducts = allProducts;
+    if (_selectedSellFilter == 'Must Sell') {
+      displayedProducts = mustSellProducts;
+    } else if (_selectedSellFilter == 'Focused Sell') {
+      displayedProducts = focusedSellProducts;
+    } else if (_selectedSellFilter == 'Suggested Sell') {
+      displayedProducts = suggestedSellProducts;
+    }
+
+    return Column(
+      children: [
+        // Region Selector Bar
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          color: const Color(0xFFF8FAFC),
+          child: Row(
+            children: [
+              const Icon(Icons.location_on, size: 14, color: Color(0xFF0070D2)),
+              const SizedBox(width: 6),
+              const Text('Region:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: ['Madhya Pradesh', 'Karnataka', 'Maharashtra', 'Gujarat'].contains(_activeRegion)
+                        ? _activeRegion
+                        : 'Madhya Pradesh',
+                    isDense: true,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0070D2)),
+                    items: const [
+                      DropdownMenuItem(value: 'Madhya Pradesh', child: Text('Madhya Pradesh (MP)')),
+                      DropdownMenuItem(value: 'Karnataka', child: Text('Karnataka (KA)')),
+                      DropdownMenuItem(value: 'Maharashtra', child: Text('Maharashtra (MH)')),
+                      DropdownMenuItem(value: 'Gujarat', child: Text('Gujarat (GJ)')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _activeRegion = val);
+                      }
+                    },
                   ),
                 ),
-              ],
-            ),
-          );
-        }
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4)),
+                child: Text('${mustSellProducts.length} Must-Sell', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red.shade800)),
+              ),
+            ],
+          ),
+        ),
 
-        final product = products[index - 1];
-        final qty = _cartQuantities[product.id] ?? 0;
-
-        return Card(
-          elevation: 1,
-          margin: const EdgeInsets.only(bottom: 10),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        // Filter chips
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           color: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                _buildOrderFilterChip('All (${allProducts.length})', 'All', const Color(0xFF475569)),
+                const SizedBox(width: 8),
+                _buildOrderFilterChip('🔴 Must Sell (${mustSellProducts.length})', 'Must Sell', const Color(0xFFDC2626)),
+                const SizedBox(width: 8),
+                _buildOrderFilterChip('⭐ Focused Sell (${focusedSellProducts.length})', 'Focused Sell', const Color(0xFF7C3AED)),
+                const SizedBox(width: 8),
+                _buildOrderFilterChip('💡 Suggested Sell (${suggestedSellProducts.length})', 'Suggested Sell', const Color(0xFFD97706)),
+              ],
+            ),
+          ),
+        ),
+
+        // Product list
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: displayedProducts.length + 1,
+            itemBuilder: (ctx, index) {
+              if (index == 0) {
+                // Top Active Schemes Banner
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.shade300),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.local_offer, color: Colors.amber, size: 24),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Active Schemes: Monsoon Boost (Buy 10 Get 1 Free) + 5% off above ₹5K, 10% off above ₹10K',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.brown),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final product = displayedProducts[index - 1];
+              final qty = _cartQuantities[product.id] ?? 0;
+              final classification = product.getSellClassificationForRegion(_activeRegion);
+              final isMustSell = classification.toLowerCase() == 'must sell';
+              final isFocusedSell = classification.toLowerCase() == 'focused sell';
+              final isSuggestedSell = classification.toLowerCase() == 'suggested sell';
+
+              return Card(
+                elevation: 1,
+                margin: const EdgeInsets.only(bottom: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: isMustSell
+                      ? BorderSide(color: Colors.red.shade300, width: 1.2)
+                      : (isFocusedSell ? BorderSide(color: Colors.purple.shade300, width: 1.2) : BorderSide.none),
+                ),
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
                     children: [
-                      Text(product.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                      Text('${product.category} • SKU: ${product.code}', style: const TextStyle(fontSize: 11, color: Colors.black54)),
-                      const SizedBox(height: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(product.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                                ),
+                                if (isMustSell)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4)),
+                                    child: const Text('MUST SELL', style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.bold)),
+                                  )
+                                else if (isFocusedSell)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(color: Colors.purple.shade50, borderRadius: BorderRadius.circular(4)),
+                                    child: const Text('FOCUSED', style: TextStyle(color: Colors.deepPurple, fontSize: 9, fontWeight: FontWeight.bold)),
+                                  )
+                                else if (isSuggestedSell)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(4)),
+                                    child: Text('SUGGESTED', style: TextStyle(color: Colors.amber.shade900, fontSize: 9, fontWeight: FontWeight.bold)),
+                                  ),
+                              ],
+                            ),
+                            Text('${product.category} • SKU: ${product.code}', style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Text('₹${product.basePrice.toStringAsFixed(0)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0070D2))),
+                                const SizedBox(width: 8),
+                                Text('MRP: ₹${product.mrp.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey, decoration: TextDecoration.lineThrough)),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(4)),
+                                  child: Text('Stock: ${product.availableStock.toInt()}', style: TextStyle(color: Colors.green.shade800, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Stepper Controls
                       Row(
                         children: [
-                          Text('₹${product.basePrice.toStringAsFixed(0)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0070D2))),
-                          const SizedBox(width: 8),
-                          Text('MRP: ₹${product.mrp.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey, decoration: TextDecoration.lineThrough)),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(4)),
-                            child: Text('Stock: ${product.availableStock.toInt()}', style: TextStyle(color: Colors.green.shade800, fontSize: 10, fontWeight: FontWeight.bold)),
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                            onPressed: qty > 0 ? () => _decrementQty(product.id) : null,
+                          ),
+                          Text('$qty', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                          IconButton(
+                            icon: Icon(Icons.add_circle, color: isMustSell ? Colors.red : const Color(0xFF0070D2)),
+                            onPressed: () => _incrementQty(product.id),
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                // Stepper Controls
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                      onPressed: qty > 0 ? () => _decrementQty(product.id) : null,
-                    ),
-                    Text('$qty', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle, color: Color(0xFF0070D2)),
-                      onPressed: () => _incrementQty(product.id),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOrderFilterChip(String label, String category, Color color) {
+    final isSelected = _selectedSellFilter == category;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedSellFilter = category),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? color : color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isSelected ? color : color.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : color),
+        ),
+      ),
     );
   }
 

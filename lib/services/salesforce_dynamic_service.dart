@@ -63,6 +63,88 @@ class SalesforceDynamicService {
   List<SchemeModel> get schemes => _schemes;
   List<ProductModel> get products => _products;
   List<PjpModel> get pjps => _pjps;
+
+  static final List<ProductModel> defaultSampleProducts = [
+    ProductModel(
+      id: 'prod-001',
+      name: 'Parle-G Gold 100g',
+      code: 'PG-GLD-100',
+      brand: 'Parle',
+      category: 'Biscuits',
+      mrp: 20.0,
+      basePrice: 16.5,
+      availableStock: 500,
+      sellClassification: 'Must Sell',
+      regionClassifications: {
+        'Madhya Pradesh': 'Must Sell',
+        'Karnataka': 'Focused Sell',
+        'Maharashtra': 'Must Sell',
+        'Gujarat': 'Suggested Sell',
+      },
+    ),
+    ProductModel(
+      id: 'prod-002',
+      name: 'Malkist Cheese Cracker 120g',
+      code: 'MLK-CHS-120',
+      brand: 'Malkist',
+      category: 'Crackers',
+      mrp: 35.0,
+      basePrice: 28.0,
+      availableStock: 250,
+      sellClassification: 'Focused Sell',
+      regionClassifications: {
+        'Madhya Pradesh': 'Focused Sell',
+        'Karnataka': 'Must Sell',
+        'Maharashtra': 'Focused Sell',
+      },
+    ),
+    ProductModel(
+      id: 'prod-003',
+      name: 'Parle Hide & Seek / Multi Cookie 120g',
+      code: 'HNS-MLT-120',
+      brand: 'Parle',
+      category: 'Cookies',
+      mrp: 50.0,
+      basePrice: 42.0,
+      availableStock: 180,
+      sellClassification: 'Suggested Sell',
+      regionClassifications: {
+        'Madhya Pradesh': 'Suggested Sell',
+        'Karnataka': 'Suggested Sell',
+        'Maharashtra': 'Suggested Sell',
+      },
+    ),
+    ProductModel(
+      id: 'prod-004',
+      name: 'Parle Monaco Classic 75g',
+      code: 'MNC-CLS-75',
+      brand: 'Parle',
+      category: 'Salted Biscuits',
+      mrp: 15.0,
+      basePrice: 12.0,
+      availableStock: 300,
+      sellClassification: 'Regular',
+      regionClassifications: {
+        'Madhya Pradesh': 'Regular',
+        'Karnataka': 'Regular',
+      },
+    ),
+    ProductModel(
+      id: 'prod-005',
+      name: 'Parle Krunch Bourbon 150g',
+      code: 'KRN-BRB-150',
+      brand: 'Parle',
+      category: 'Cream Biscuits',
+      mrp: 40.0,
+      basePrice: 32.0,
+      availableStock: 220,
+      sellClassification: 'Suggested Sell',
+      regionClassifications: {
+        'Madhya Pradesh': 'Suggested Sell',
+        'Karnataka': 'Focused Sell',
+      },
+    ),
+  ];
   List<LeaveRequestModel> get leaves => _leaves;
   List<TargetModel> get targets => _targets;
   List<SupportTicketModel> get tickets => _tickets;
@@ -186,9 +268,16 @@ class SalesforceDynamicService {
   }
 
   // 4. Fetch Dynamic Biscuit Catalog
-  Future<void> fetchProducts() async {
+  Future<void> fetchProducts({String? region}) async {
     try {
-      final res = await _dio.get('/services/apexrest/api/v1/sfa/dynamic/products');
+      final q = <String, String>{};
+      if (region != null && region.isNotEmpty) {
+        q['region'] = region;
+      }
+      final res = await _dio.get(
+        '/services/apexrest/api/v1/sfa/dynamic/products',
+        queryParameters: q.isNotEmpty ? q : null,
+      );
       if (res.data != null) {
         final list = (res.data is List) ? res.data as List : (res.data['products'] as List? ?? []);
         if (list.isNotEmpty) {
@@ -196,6 +285,9 @@ class SalesforceDynamicService {
         }
       }
     } catch (_) {}
+    if (_products.isEmpty) {
+      _products = List.from(defaultSampleProducts);
+    }
   }
 
   // 5. Fetch Dynamic PJP ➔ Beat ➔ Outlet Tree
@@ -602,6 +694,7 @@ class SalesforceDynamicService {
     required double totalAmount,
     String notes = '',
     String? deliveryDate,
+    String? mustSellNonPurchaseReasons,
   }) async {
     try {
       final payloadItems = items.map((i) => {
@@ -625,6 +718,7 @@ class SalesforceDynamicService {
           'grossAmount': subTotal,
           'taxAmount': taxAmount,
           'totalAmount': totalAmount,
+          'mustSellNonPurchaseReasons': mustSellNonPurchaseReasons,
           'remarks': notes,
         },
       );
