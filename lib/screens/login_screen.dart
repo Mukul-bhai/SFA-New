@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/salesforce_auth_service.dart';
 import '../services/salesforce_dynamic_service.dart';
 import '../services/salesforce_sync_service.dart';
+import '../widgets/salesforce_session_sheet.dart';
 import 'main_navigation_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -259,6 +260,25 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF001E3C),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: Colors.white),
+            tooltip: 'Salesforce Session & Org Settings',
+            onPressed: () {
+              showSalesforceSessionSheet(
+                context,
+                authService: widget.authService,
+                dynamicService: widget.dynamicService,
+                syncService: widget.syncService,
+                onSessionUpdated: () => setState(() {}),
+              );
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -577,6 +597,24 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: _isLoading ? null : _handleOfflineLogin,
                           icon: const Icon(Icons.wifi_off_rounded, size: 18),
                           label: const Text('Field / Offline Access (Mukul Yadav)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF0070D2),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                          onPressed: () {
+                            showSalesforceSessionSheet(
+                              context,
+                              authService: widget.authService,
+                              dynamicService: widget.dynamicService,
+                              syncService: widget.syncService,
+                              onSessionUpdated: () => setState(() {}),
+                            );
+                          },
+                          icon: const Icon(Icons.cloud_sync, size: 18),
+                          label: const Text('Salesforce Session & Token Settings', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                         ),
                       ],
                       const SizedBox(height: 20),

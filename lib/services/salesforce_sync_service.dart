@@ -5,27 +5,33 @@ import '../models/models.dart';
 import 'salesforce_auth_service.dart';
 
 class SalesforceSyncService {
-  static const String instanceUrl = SalesforceAuthService.instanceUrl;
-  static String get bearerToken => SalesforceAuthService.defaultBearerToken;
+  static String get instanceUrl => SalesforceAuthService.activeInstanceUrl;
+  static String get bearerToken => SalesforceAuthService.currentBearerToken;
 
   late final Dio _dio;
 
   SalesforceSyncService() {
     _dio = Dio(BaseOptions(
-      baseUrl: instanceUrl,
+      baseUrl: SalesforceAuthService.activeInstanceUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 15),
       headers: {
-        'Authorization': 'Bearer $bearerToken',
+        'Authorization': 'Bearer ${SalesforceAuthService.currentBearerToken}',
         'Content-Type': 'application/json',
       },
     ));
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        options.headers['Authorization'] = 'Bearer ${SalesforceAuthService.defaultBearerToken}';
+        options.headers['Authorization'] = 'Bearer ${SalesforceAuthService.currentBearerToken}';
+        options.baseUrl = SalesforceAuthService.activeInstanceUrl;
         return handler.next(options);
       },
     ));
+  }
+
+  void reloadSession() {
+    _dio.options.headers['Authorization'] = 'Bearer ${SalesforceAuthService.currentBearerToken}';
+    _dio.options.baseUrl = SalesforceAuthService.activeInstanceUrl;
   }
 
   List<LocalOrderModel> _outbox = [];

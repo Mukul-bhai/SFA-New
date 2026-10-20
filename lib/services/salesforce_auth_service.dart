@@ -7,8 +7,12 @@ class SalesforceAuthService {
   static const String instanceUrl = 'https://orgfarm-03c6654659-dev-ed.develop.my.salesforce.com';
   // Active Bearer token from Salesforce CLI
   static final String defaultBearerToken = utf8.decode(base64.decode(
-    'MDBEZzgwMDAwMExST1ZCIUFRRUFRRHBKX3htNkZmdHJ1aTRTLmUyeTdaSkhwYlJDa2ZZeTRIUnE4QUdhTHhwRlMzSzlLWjhvRWtqT3lXdUxSLmJVOVhEeGdMLjdJby50M1B4R1JwQkRwS1VMQzB1YQ==',
+    'MDBEZzgwMDAwMExST1ZCIUFRRUFRTjdIaW5ncVM4dUY4MVNsc0l1V1g0RFdsVmszVm1rU09RRjN2a1owVzdlQ0dyUDZaZnJRZkhSNWJxdVdWNGtsejhURUFjQjh0ei50R2VnbjFBcktoQnhYcWV6Mg==',
   ));
+
+  static String activeToken = defaultBearerToken;
+  static String activeInstanceUrl = instanceUrl;
+  static String get currentBearerToken => activeToken;
 
   late final Dio _dio;
   UserModel? _currentUser;
@@ -16,31 +20,49 @@ class SalesforceAuthService {
 
   SalesforceAuthService() {
     _dio = Dio(BaseOptions(
-      baseUrl: instanceUrl,
+      baseUrl: activeInstanceUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 15),
       headers: {
-        'Authorization': 'Bearer $defaultBearerToken',
+        'Authorization': 'Bearer $currentBearerToken',
         'Content-Type': 'application/json',
       },
     ));
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        options.headers['Authorization'] = 'Bearer ${_authToken ?? defaultBearerToken}';
+        options.headers['Authorization'] = 'Bearer $currentBearerToken';
+        options.baseUrl = activeInstanceUrl;
         return handler.next(options);
       },
     ));
   }
 
   UserModel? get currentUser => _currentUser;
-  String? get authToken => _authToken ?? defaultBearerToken;
+  String? get authToken => _authToken ?? currentBearerToken;
   bool get isAuthenticated => _currentUser != null;
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    // Always refresh with active Salesforce CLI bearer token so live REST queries never hit 401
-    _authToken = defaultBearerToken;
-    await prefs.setString('sfa_auth_token', defaultBearerToken);
+    final savedToken = prefs.getString('sfa_auth_token');
+    final savedUrl = prefs.getString('sfa_instance_url');
+
+    if (savedToken != null && savedToken.trim().isNotEmpty) {
+      _authToken = savedToken.trim();
+    } else {
+      _authToken = defaultBearerToken;
+      await prefs.setString('sfa_auth_token', defaultBearerToken);
+    }
+    activeToken = _authToken!;
+
+    if (savedUrl != null && savedUrl.trim().isNotEmpty) {
+      activeInstanceUrl = savedUrl.trim();
+    } else {
+      activeInstanceUrl = instanceUrl;
+      await prefs.setString('sfa_instance_url', instanceUrl);
+    }
+
+    _dio.options.baseUrl = activeInstanceUrl;
+    _dio.options.headers['Authorization'] = 'Bearer $activeToken';
 
     final savedUserJson = prefs.getString('sfa_current_user');
     if (savedUserJson != null) {
@@ -52,6 +74,66 @@ class SalesforceAuthService {
     }
     if (_currentUser == null) {
       await loginOffline(email: 'mukulfingertipplus@gmail.com');
+    }
+  }
+
+  /// Updates active Salesforce session token and instance URL persistently
+  Future<void> updateSession({required String token, String? newInstanceUrl}) async {
+    _authToken = token.trim();
+    activeToken = _authToken!;
+    if (newInstanceUrl != null && newInstanceUrl.trim().isNotEmpty) {
+      activeInstanceUrl = newInstanceUrl.trim();
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('sfa_auth_token', activeToken);
+    await prefs.setString('sfa_instance_url', activeInstanceUrl);
+
+    _dio.options.baseUrl = activeInstanceUrl;
+    _dio.options.headers['Authorization'] = 'Bearer $activeToken';
+  }
+
+  /// Tests connectivity against Salesforce using a candidate or active token
+  Future<Map<String, dynamic>> testConnection({String? testToken, String? testUrl}) async {
+    final tokenToTest = (testToken != null && testToken.trim().isNotEmpty) ? testToken.trim() : activeToken;
+    final urlToTest = (testUrl != null && testUrl.trim().isNotEmpty) ? testUrl.trim() : activeInstanceUrl;
+    try {
+      final testDio = Dio(BaseOptions(
+        baseUrl: urlToTest,
+        connectTimeout: const Duration(seconds: 12),
+        receiveTimeout: const Duration(seconds: 12),
+        headers: {
+          'Authorization': 'Bearer $tokenToTest',
+          'Content-Type': 'application/json',
+        },
+      ));
+      final res = await testDio.get('/services/apexrest/api/v1/sfa/dynamic/dashboard');
+      if (res.statusCode == 200 && res.data != null) {
+        final data = res.data;
+        final success = data is Map ? (data['success'] ?? true) : true;
+        if (success) {
+          return {
+            'success': true,
+            'message': 'Connected successfully to Salesforce Core Cloud!',
+            'data': data,
+          };
+        }
+      }
+      return {
+        'success': false,
+        'message': 'Salesforce returned status ${res.statusCode}',
+      };
+    } catch (e) {
+      final err = e.toString();
+      if (err.contains('401')) {
+        return {
+          'success': false,
+          'message': 'Session Expired (401 Unauthorized). Please provide a fresh access token.',
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Connection test failed: $err',
+      };
     }
   }
 

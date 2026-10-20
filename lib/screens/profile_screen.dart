@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/salesforce_auth_service.dart';
+import '../services/salesforce_dynamic_service.dart';
 import '../services/salesforce_sync_service.dart';
+import '../widgets/salesforce_session_sheet.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final SalesforceAuthService authService;
   final SalesforceSyncService syncService;
+  final SalesforceDynamicService? dynamicService;
 
   const ProfileScreen({
     super.key,
     required this.authService,
     required this.syncService,
+    this.dynamicService,
   });
 
   @override
@@ -20,19 +24,56 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isSyncing = false;
+  bool _isCheckingConnection = false;
+  bool? _isConnectedLive;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLiveConnection();
+  }
+
+  Future<void> _checkLiveConnection() async {
+    setState(() => _isCheckingConnection = true);
+    final res = await widget.authService.testConnection();
+    if (!mounted) return;
+    setState(() {
+      _isCheckingConnection = false;
+      _isConnectedLive = res['success'] == true;
+    });
+  }
 
   Future<void> _handleForceSync() async {
     setState(() => _isSyncing = true);
     await widget.syncService.syncOutbox();
     await widget.syncService.fetchBootstrapData();
+    if (widget.dynamicService != null) {
+      await widget.dynamicService!.refreshAll();
+    }
+    await _checkLiveConnection();
     setState(() => _isSyncing = false);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('All outbox records synced successfully with Salesforce Core Cloud!'),
-        backgroundColor: Color(0xFF16A34A),
+      SnackBar(
+        content: Text(_isConnectedLive == true
+            ? 'All outbox records synced successfully with Salesforce Core Cloud!'
+            : 'Synced locally. Note: Salesforce session expired, please update token.'),
+        backgroundColor: _isConnectedLive == true ? const Color(0xFF16A34A) : Colors.orange.shade800,
       ),
+    );
+  }
+
+  void _openSessionSheet() {
+    showSalesforceSessionSheet(
+      context,
+      authService: widget.authService,
+      dynamicService: widget.dynamicService,
+      syncService: widget.syncService,
+      onSessionUpdated: () {
+        setState(() {});
+        _checkLiveConnection();
+      },
     );
   }
 
@@ -203,25 +244,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text('Salesforce Offline Sync Engine', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.green.shade200),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.cloud_done, size: 14, color: Color(0xFF16A34A)),
-                              SizedBox(width: 4),
-                              Text('Connected', style: TextStyle(color: Color(0xFF16A34A), fontSize: 11, fontWeight: FontWeight.bold)),
-                            ],
+                        GestureDetector(
+                          onTap: _checkLiveConnection,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: _isConnectedLive == true
+                                  ? Colors.green.shade50
+                                  : (_isConnectedLive == false ? Colors.red.shade50 : Colors.blue.shade50),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _isConnectedLive == true
+                                    ? Colors.green.shade200
+                                    : (_isConnectedLive == false ? Colors.red.shade200 : Colors.blue.shade200),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _isConnectedLive == true
+                                      ? Icons.cloud_done
+                                      : (_isConnectedLive == false ? Icons.cloud_off : Icons.sync),
+                                  size: 14,
+                                  color: _isConnectedLive == true
+                                      ? const Color(0xFF16A34A)
+                                      : (_isConnectedLive == false ? const Color(0xFFDC2626) : const Color(0xFF0070D2)),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _isCheckingConnection
+                                      ? 'Checking...'
+                                      : (_isConnectedLive == true ? 'Connected' : 'Token Expired'),
+                                  style: TextStyle(
+                                    color: _isConnectedLive == true
+                                        ? const Color(0xFF16A34A)
+                                        : (_isConnectedLive == false ? const Color(0xFFDC2626) : const Color(0xFF0070D2)),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const Text('Instance: develop.my.salesforce.com', style: TextStyle(fontSize: 11, color: Colors.black54)),
+                    Text('Instance: ${SalesforceAuthService.activeInstanceUrl.replaceAll('https://', '')}',
+                        style: const TextStyle(fontSize: 11, color: Colors.black54)),
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -241,7 +311,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF0070D2),
+                              side: const BorderSide(color: Color(0xFF0070D2)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            onPressed: _openSessionSheet,
+                            icon: const Icon(Icons.key, size: 16),
+                            label: const Text('Session Token', style: TextStyle(fontSize: 12)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
@@ -251,9 +334,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             onPressed: _isSyncing ? null : _handleForceSync,
                             icon: _isSyncing
-                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Icon(Icons.sync, size: 18),
-                            label: const Text('Force Sync'),
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                : const Icon(Icons.sync, size: 16),
+                            label: const Text('Force Sync', style: TextStyle(fontSize: 12)),
                           ),
                         ),
                       ],
@@ -271,6 +354,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: Colors.white,
               child: Column(
                 children: [
+                  ListTile(
+                    leading: const Icon(Icons.cloud_sync, color: Color(0xFF0070D2)),
+                    title: const Text('Salesforce Session & Access Token'),
+                    subtitle: Text(_isConnectedLive == true
+                        ? 'Live connected • Changes sync to Salesforce'
+                        : 'Session expired • Tap to update access token'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _openSessionSheet,
+                  ),
+                  const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.key, color: Color(0xFF0070D2)),
                     title: const Text('Set / Change App Password'),

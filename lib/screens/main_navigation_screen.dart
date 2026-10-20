@@ -70,6 +70,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ProfileScreen(
         authService: widget.authService,
         syncService: widget.syncService,
+        dynamicService: widget.dynamicService,
       ),
     ];
 
