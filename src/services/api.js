@@ -31,8 +31,8 @@ const SEED_DISTRIBUTORS = [
     defaultWarehouseName: 'Primary Central Depot A',
     gstin: '27AABCT1332L1Z5',
     salesReps: [
-      { id: 'SR-01', name: 'Rahul Sharma', code: 'EMP-SR-101', phone: '+91 98112 33441', email: 'rahul.sfa@apex.com', monthlyTarget: 450000, achievedAmount: 395000, strikeRate: 86.4, status: 'Active' },
-      { id: 'SR-02', name: 'Amit Verma', code: 'EMP-SR-102', phone: '+91 98334 55662', email: 'amit.sfa@apex.com', monthlyTarget: 400000, achievedAmount: 368000, strikeRate: 82.1, status: 'Active' }
+      { id: 'SR-01', name: 'Rahul Sharma', code: 'EMP-SR-101', phone: '+91 98112 33441', email: 'rahul.sfa@apex.com', monthlyTarget: 450000, achievedAmount: 395000, strikeRate: 86.4, status: 'Active', totalAssignedOutlets: 1, assignedBeats: ['Monday Market Beat'] },
+      { id: 'SR-02', name: 'Amit Verma', code: 'EMP-SR-102', phone: '+91 98334 55662', email: 'amit.sfa@apex.com', monthlyTarget: 400000, achievedAmount: 368000, strikeRate: 82.1, status: 'Active', totalAssignedOutlets: 1, assignedBeats: ['Tuesday Coastal Beat'] }
     ],
     beats: [
       { id: 'BEAT-01', name: 'Monday Market Beat', code: 'BT-MON-01', dayOfWeek: 'Monday', assignedSR: 'Rahul Sharma' },
@@ -53,7 +53,7 @@ const SEED_DISTRIBUTORS = [
     defaultWarehouseName: 'Royal Central Depot 1',
     gstin: '07AABCR9911K1Z2',
     salesReps: [
-      { id: 'SR-03', name: 'Vikas Khanna', code: 'EMP-SR-103', phone: '+91 98711 22334', email: 'vikas@royal.com', monthlyTarget: 350000, achievedAmount: 310000, strikeRate: 88.5, status: 'Active' }
+      { id: 'SR-03', name: 'Vikas Khanna', code: 'EMP-SR-103', phone: '+91 98711 22334', email: 'vikas@royal.com', monthlyTarget: 350000, achievedAmount: 310000, strikeRate: 88.5, status: 'Active', totalAssignedOutlets: 1, assignedBeats: ['South Delhi Daily Route'] }
     ],
     beats: [
       { id: 'BEAT-03', name: 'South Delhi Daily Route', code: 'BT-DEL-01', dayOfWeek: 'Wednesday', assignedSR: 'Vikas Khanna' }
@@ -73,7 +73,7 @@ const SEED_DISTRIBUTORS = [
     defaultWarehouseName: 'Backup Warehouse B',
     gstin: '27AABCZ5544M1Z8',
     salesReps: [
-      { id: 'SR-04', name: 'Sanjay Deshmukh', code: 'EMP-SR-104', phone: '+91 98220 33445', email: 'sanjay@zenith.in', monthlyTarget: 300000, achievedAmount: 245000, strikeRate: 81.6, status: 'Active' }
+      { id: 'SR-04', name: 'Sanjay Deshmukh', code: 'EMP-SR-104', phone: '+91 98220 33445', email: 'sanjay@zenith.in', monthlyTarget: 300000, achievedAmount: 245000, strikeRate: 81.6, status: 'Active', totalAssignedOutlets: 1, assignedBeats: ['Pune High-Street Route'] }
     ],
     beats: [
       { id: 'BEAT-04', name: 'Pune High-Street Route', code: 'BT-PUN-01', dayOfWeek: 'Thursday', assignedSR: 'Sanjay Deshmukh' }
@@ -282,7 +282,7 @@ export class DMSDataService {
               phone: existingSeed.phone || '+91 98000 00000',
               email: existingSeed.email || 'ops@distributor.com',
               salesReps: (existingSeed.salesReps && existingSeed.salesReps.length > 0) ? existingSeed.salesReps : [
-                { id: `SR-${d.id.substring(d.id.length - 2)}`, name: 'Field Sales Executive', code: 'EMP-SR-01', phone: '+91 98112 33441', email: 'sales@dist.com', monthlyTarget: 400000, achievedAmount: 320000, strikeRate: 85.0, status: 'Active' }
+                { id: `SR-${d.id.substring(d.id.length - 2)}`, name: 'Field Sales Executive', code: 'EMP-SR-01', phone: '+91 98112 33441', email: 'sales@dist.com', monthlyTarget: 400000, achievedAmount: 320000, strikeRate: 85.0, status: 'Active', totalAssignedOutlets: 1, assignedBeats: ['Main City Route'] }
               ],
               beats: (existingSeed.beats && existingSeed.beats.length > 0) ? existingSeed.beats : [
                 { id: `BEAT-${d.id.substring(d.id.length - 2)}`, name: 'Main City Beat Route', code: 'BT-01', dayOfWeek: 'Monday', assignedSR: 'Field Sales Executive' }

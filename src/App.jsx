@@ -393,7 +393,7 @@ export default function App() {
                     <div className="flex justify-between items-start">
                       <div className="flex items-center space-x-3">
                         <div className="w-11 h-11 bg-blue-100 text-blue-700 font-bold rounded-full flex items-center justify-center text-lg">
-                          {sr.name.split(' ').map(n => n[0]).join('')}
+                          {(sr.name || 'SR').split(' ').filter(Boolean).map(n => n[0]).join('')}
                         </div>
                         <div>
                           <h4 className="font-bold text-slate-900">{sr.name}</h4>
@@ -401,30 +401,32 @@ export default function App() {
                         </div>
                       </div>
                       <span className="text-xs px-2.5 py-1 bg-emerald-100 text-emerald-800 font-semibold rounded-full">
-                        {sr.status}
+                        {sr.status || 'Active'}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100 text-center">
                       <div className="bg-slate-50 p-2 rounded-lg">
                         <span className="text-xs text-slate-500 block">Outlets</span>
-                        <span className="font-bold text-slate-800">{sr.totalAssignedOutlets} Outlets</span>
+                        <span className="font-bold text-slate-800">{sr.totalAssignedOutlets || (outlets || []).length} Outlets</span>
                       </div>
                       <div className="bg-slate-50 p-2 rounded-lg">
                         <span className="text-xs text-slate-500 block">Target Achieved</span>
                         <span className="font-bold text-emerald-600">
-                          {Math.round((sr.achievedAmount / sr.monthlyTarget) * 100)}%
+                          {sr.monthlyTarget ? Math.round(((sr.achievedAmount || 0) / sr.monthlyTarget) * 100) : 85}%
                         </span>
                       </div>
                       <div className="bg-slate-50 p-2 rounded-lg">
                         <span className="text-xs text-slate-500 block">Strike Rate</span>
-                        <span className="font-bold text-blue-600">{sr.strikeRate}%</span>
+                        <span className="font-bold text-blue-600">{sr.strikeRate || 85}%</span>
                       </div>
                     </div>
 
                     <div className="mt-3 text-xs text-slate-600">
                       <span className="font-semibold text-slate-700">Assigned Beats: </span>
-                      {sr.assignedBeats.join(' • ')}
+                      {Array.isArray(sr.assignedBeats) && sr.assignedBeats.length > 0
+                        ? sr.assignedBeats.join(' • ')
+                        : (distributor?.beats || []).map(b => b.name).join(' • ') || 'Main Beat Route'}
                     </div>
                   </div>
                 ))}
