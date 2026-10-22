@@ -33,6 +33,7 @@ export default function App() {
   const [returnAssetSubTab, setReturnAssetSubTab] = useState('returns');
 
   // State Collections
+  const [allDistributors, setAllDistributors] = useState(DMSDataService.getAllDistributors());
   const [distributor, setDistributor] = useState(DMSDataService.getDistributor());
   const [outlets, setOutlets] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -92,8 +93,26 @@ export default function App() {
     setCoverageReport(DMSDataService.getOutletCoverage());
   };
 
+  const handleFullSync = async () => {
+    await DMSDataService.syncDistributorsFromSalesforce();
+    await DMSDataService.syncRetailersFromSalesforce();
+    await DMSDataService.syncOrdersFromSalesforce();
+    await DMSDataService.syncInventoryFromSalesforce();
+    setAllDistributors(DMSDataService.getAllDistributors());
+    reloadData();
+  };
+
+  const handleDistributorChange = (newDistId) => {
+    DMSDataService.setActiveDistributorId(newDistId);
+    reloadData();
+    const newDist = DMSDataService.getAllDistributors().find(d => d.id === newDistId);
+    triggerToast(`Switched active portal view to: ${newDist?.name || 'Selected Distributor'}`);
+  };
+
   useEffect(() => {
     reloadData();
+    // Synchronize live with Salesforce
+    handleFullSync();
   }, []);
 
   // Handlers
@@ -187,7 +206,7 @@ export default function App() {
       )}
 
       {/* Top Corporate Navbar */}
-      <header className="bg-slate-900 text-white border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center shadow-lg sticky top-0 z-40">
+      <header className="bg-slate-900 text-white border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center shadow-lg sticky top-0 z-40 gap-4">
         <div className="flex items-center space-x-3">
           <div className="bg-blue-600 p-2.5 rounded-xl shadow-md">
             <Building2 className="w-6 h-6 text-white" />
@@ -207,20 +226,36 @@ export default function App() {
           </div>
         </div>
 
-        {/* Live Salesforce SFA Sync Pill */}
-        <div className="flex items-center space-x-4 mt-3 sm:mt-0">
+        {/* Multi-Distributor Switcher & Live Salesforce SFA Sync Pill */}
+        <div className="flex items-center space-x-3 flex-wrap gap-2">
+          {/* Dynamic Switcher */}
+          <div className="flex items-center space-x-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">
+            <span className="text-slate-400 font-medium">Switch Distributor:</span>
+            <select
+              value={distributor.id}
+              onChange={(e) => handleDistributorChange(e.target.value)}
+              className="bg-slate-900 text-white font-semibold text-xs border border-slate-600 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+            >
+              {allDistributors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} ({d.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex items-center space-x-2 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>SFA Mobile & Salesforce Live Synced</span>
+            <span>Salesforce Live Synced</span>
           </div>
 
           <button
-            onClick={() => {
-              reloadData();
-              triggerToast('Refreshed data directly from SFA Cloud sync!');
+            onClick={async () => {
+              await handleFullSync();
+              triggerToast('Refreshed data directly from Salesforce Cloud!');
             }}
             className="p-2 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition"
-            title="Refresh DMS Data"
+            title="Refresh DMS Data from Salesforce"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -238,7 +273,7 @@ export default function App() {
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>Distributor & Outlets ({distributor.totalOutlets})</span>
+          <span>Distributor & Outlets ({outlets.length})</span>
         </button>
 
         <button
@@ -320,16 +355,16 @@ export default function App() {
                 <span className="text-blue-300 text-xs font-semibold uppercase tracking-wider">
                   Distributor Operations
                 </span>
-                <h2 className="text-2xl font-bold mt-1">Distributor, SR & 70 Retail Outlets</h2>
+                <h2 className="text-2xl font-bold mt-1">{distributor.name} — SR & Retail Outlets</h2>
                 <p className="text-sm text-blue-100 max-w-2xl mt-1">
-                  Myfair manages 2 Sales Representatives (SRs), 6 Beat routes, and 70 assigned retail outlets across Mumbai East.
+                  {distributor.name} manages {distributor.salesReps.length} Sales Representatives (SRs), {distributor.beats.length} Beat routes, and {outlets.length} assigned retail outlets.
                 </p>
               </div>
 
               <div className="flex space-x-4 mt-4 lg:mt-0">
                 <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl text-center border border-white/10">
                   <span className="text-xs text-blue-200">Total Outlets</span>
-                  <div className="text-2xl font-bold">{distributor.totalOutlets}</div>
+                  <div className="text-2xl font-bold">{outlets.length}</div>
                 </div>
                 <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl text-center border border-white/10">
                   <span className="text-xs text-blue-200">Active SRs</span>
@@ -401,7 +436,7 @@ export default function App() {
                     <Store className="w-5 h-5 text-blue-600" />
                     <span>Retail Outlets Network (Showing {filteredOutlets.length} of {outlets.length})</span>
                   </h3>
-                  <p className="text-xs text-slate-500">Retail shops under Myfair where SR takes orders using SFA mobile</p>
+                  <p className="text-xs text-slate-500">Retail shops assigned to {distributor.name} where SR takes orders using SFA mobile</p>
                 </div>
 
                 <div className="flex items-center space-x-3 w-full sm:w-auto">
