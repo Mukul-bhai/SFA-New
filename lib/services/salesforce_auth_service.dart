@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class SalesforceAuthService {
   static const String instanceUrl = 'https://orgfarm-03c6654659-dev-ed.develop.my.salesforce.com';
+
   // Active Bearer token from Salesforce CLI
   static final String defaultBearerToken = utf8.decode(base64.decode(
     'MDBEZzgwMDAwMExST1ZCIUFRRUFRTjdIaW5ncVM4dUY4MVNsc0l1V1g0RFdsVmszVm1rU09RRjN2a1owVzdlQ0dyUDZaZnJRZkhSNWJxdVdWNGtsejhURUFjQjh0ei50R2VnbjFBcktoQnhYcWV6Mg==',
@@ -13,6 +17,28 @@ class SalesforceAuthService {
   static String activeToken = defaultBearerToken;
   static String activeInstanceUrl = instanceUrl;
   static String get currentBearerToken => activeToken;
+
+  static bool _isRefreshing = false;
+  static final List<Completer<String?>> _refreshCompleters = [];
+  static final List<VoidCallback> _sessionListeners = [];
+
+  static void addSessionListener(VoidCallback listener) {
+    if (!_sessionListeners.contains(listener)) {
+      _sessionListeners.add(listener);
+    }
+  }
+
+  static void removeSessionListener(VoidCallback listener) {
+    _sessionListeners.remove(listener);
+  }
+
+  static void _notifySessionListeners() {
+    for (final listener in List.of(_sessionListeners)) {
+      try {
+        listener();
+      } catch (_) {}
+    }
+  }
 
   late final Dio _dio;
   UserModel? _currentUser;
@@ -28,11 +54,43 @@ class SalesforceAuthService {
         'Content-Type': 'application/json',
       },
     ));
+
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
         options.headers['Authorization'] = 'Bearer $currentBearerToken';
         options.baseUrl = activeInstanceUrl;
         return handler.next(options);
+      },
+      onError: (err, handler) async {
+        // Automatic token renewal & replay when 401 Unauthorized is received
+        if (err.response?.statusCode == 401 && err.requestOptions.extra['retried_401'] != true) {
+          debugPrint('[SalesforceAuthService] 401 Unauthorized detected. Auto-refreshing token...');
+          final freshToken = await autoRefreshToken(force: true);
+          if (freshToken != null && freshToken.isNotEmpty) {
+            final retryOptions = Options(
+              method: err.requestOptions.method,
+              headers: {
+                ...err.requestOptions.headers,
+                'Authorization': 'Bearer $freshToken',
+              },
+              extra: {...err.requestOptions.extra, 'retried_401': true},
+              contentType: err.requestOptions.contentType,
+              responseType: err.requestOptions.responseType,
+            );
+            try {
+              final retryRes = await Dio().request(
+                err.requestOptions.uri.toString(),
+                data: err.requestOptions.data,
+                queryParameters: err.requestOptions.queryParameters,
+                options: retryOptions,
+              );
+              return handler.resolve(retryRes);
+            } catch (retryErr) {
+              return handler.next(err);
+            }
+          }
+        }
+        return handler.next(err);
       },
     ));
   }
@@ -75,6 +133,106 @@ class SalesforceAuthService {
     if (_currentUser == null) {
       await loginOffline(email: 'mukulfingertipplus@gmail.com');
     }
+
+    // Proactive background auto-refresh on app launch so token is fresh
+    unawaited(autoRefreshToken());
+  }
+
+  /// Automatically refreshes access token using multi-tier fallback:
+  /// Tier 1: Host Bridge HTTP endpoint (Android Emulator: 10.0.2.2:5173, Wi-Fi: 192.168.31.165:5173, Localhost: 5173)
+  /// Tier 2: Direct Host Salesforce CLI execution (when running on Desktop Windows / Mac / Linux)
+  static Future<String?> autoRefreshToken({bool force = false}) async {
+    if (_isRefreshing) {
+      final completer = Completer<String?>();
+      _refreshCompleters.add(completer);
+      return completer.future;
+    }
+
+    _isRefreshing = true;
+
+    try {
+      String? freshToken;
+
+      // Tier 1: Candidate Host Bridge HTTP endpoints
+      final bridgeCandidates = [
+        'http://10.0.2.2:5173/api/token',       // Android emulator default alias to host PC
+        'http://192.168.31.165:5173/api/token', // Local Wi-Fi network host IP
+        'http://localhost:5173/api/token',      // Windows / Desktop / Web localhost
+      ];
+
+      for (final endpoint in bridgeCandidates) {
+        try {
+          final res = await Dio(BaseOptions(
+            connectTimeout: const Duration(milliseconds: 2000),
+            receiveTimeout: const Duration(milliseconds: 2500),
+          )).get(endpoint);
+
+          if (res.statusCode == 200 && res.data != null) {
+            final data = res.data is String ? jsonDecode(res.data) : res.data;
+            if (data is Map && data['accessToken'] != null) {
+              freshToken = data['accessToken'].toString().trim();
+              if (data['instanceUrl'] != null && data['instanceUrl'].toString().isNotEmpty) {
+                activeInstanceUrl = data['instanceUrl'].toString().trim();
+              }
+              debugPrint('[SalesforceAuthService] Auto-refreshed token from $endpoint');
+              break;
+            }
+          }
+        } catch (_) {
+          // Continue to next candidate endpoint
+        }
+      }
+
+      // Tier 2: Direct Host CLI Process (if running on Desktop Windows / Mac / Linux)
+      if (freshToken == null && !kIsWeb) {
+        try {
+          if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+            final cmd = Platform.isWindows ? 'sf.cmd' : 'sf';
+            final proc = await Process.run(cmd, [
+              'org',
+              'auth',
+              'show-access-token',
+              '--target-org',
+              'SFAOrg',
+              '--json'
+            ]).timeout(const Duration(seconds: 8));
+
+            if (proc.exitCode == 0 && proc.stdout != null) {
+              final parsed = jsonDecode(proc.stdout.toString());
+              if (parsed['result']?['accessToken'] != null) {
+                freshToken = parsed['result']['accessToken'].toString().trim();
+                debugPrint('[SalesforceAuthService] Auto-refreshed token via Salesforce CLI Process.');
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('[SalesforceAuthService] CLI process check note: $e');
+        }
+      }
+
+      if (freshToken != null && freshToken.isNotEmpty) {
+        activeToken = freshToken;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('sfa_auth_token', activeToken);
+        await prefs.setString('sfa_instance_url', activeInstanceUrl);
+
+        _notifySessionListeners();
+
+        for (final c in _refreshCompleters) {
+          if (!c.isCompleted) c.complete(activeToken);
+        }
+        _refreshCompleters.clear();
+        return activeToken;
+      }
+    } finally {
+      _isRefreshing = false;
+      for (final c in _refreshCompleters) {
+        if (!c.isCompleted) c.complete(null);
+      }
+      _refreshCompleters.clear();
+    }
+
+    return null;
   }
 
   /// Updates active Salesforce session token and instance URL persistently
@@ -90,6 +248,7 @@ class SalesforceAuthService {
 
     _dio.options.baseUrl = activeInstanceUrl;
     _dio.options.headers['Authorization'] = 'Bearer $activeToken';
+    _notifySessionListeners();
   }
 
   /// Tests connectivity against Salesforce using a candidate or active token
@@ -127,12 +286,12 @@ class SalesforceAuthService {
       if (err.contains('401')) {
         return {
           'success': false,
-          'message': 'Session Expired (401 Unauthorized). Please provide a fresh access token.',
+          'message': 'Session Expired (401 Unauthorized). Auto-refreshing in progress...',
         };
       }
       return {
         'success': false,
-        'message': 'Connection test failed: $err',
+        'message': 'Connection test note: $err',
       };
     }
   }
@@ -307,7 +466,6 @@ class SalesforceAuthService {
           errStr.contains('connection error') ||
           errStr.contains('Failed host lookup');
       if (isNetworkErr) {
-        // Automatic fallback to field offline mode
         return await loginOffline(email: email);
       }
       return {'success': false, 'message': 'Authentication failed: $errStr'};

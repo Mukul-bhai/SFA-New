@@ -48,9 +48,53 @@ class _SalesforceSessionSheetState extends State<SalesforceSessionSheet> {
 
   bool _isTesting = false;
   bool _isSaving = false;
+  bool _isAutoRefreshing = false;
   bool _obscureToken = true;
   bool? _testSuccess;
   String? _testResultMessage;
+
+  Future<void> _handleAutoRefresh() async {
+    setState(() {
+      _isAutoRefreshing = true;
+      _testResultMessage = 'Fetching live access token from Salesforce CLI...';
+    });
+
+    final fresh = await SalesforceAuthService.autoRefreshToken(force: true);
+
+    if (!mounted) return;
+    setState(() {
+      _isAutoRefreshing = false;
+      if (fresh != null && fresh.isNotEmpty) {
+        _tokenController.text = fresh;
+        _testSuccess = true;
+        _testResultMessage = 'Token auto-refreshed successfully from Salesforce CLI!';
+      } else {
+        _testSuccess = false;
+        _testResultMessage = 'Auto-refresh bridge connection failed. Please ensure dev server is running on host.';
+      }
+    });
+
+    if (fresh != null && fresh.isNotEmpty) {
+      widget.dynamicService?.reloadSession();
+      widget.syncService.reloadSession();
+      widget.onSessionUpdated?.call();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(child: Text('Live token refreshed from Salesforce CLI! Never need to enter manually.')),
+            ],
+          ),
+          backgroundColor: Color(0xFF16A34A),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -113,6 +157,7 @@ class _SalesforceSessionSheetState extends State<SalesforceSessionSheet> {
     final url = _urlController.text.trim();
 
     if (token.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Access token cannot be empty.'),
@@ -149,6 +194,7 @@ class _SalesforceSessionSheetState extends State<SalesforceSessionSheet> {
 
       Navigator.pop(context);
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(
@@ -165,6 +211,7 @@ class _SalesforceSessionSheetState extends State<SalesforceSessionSheet> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving session: $e'),
@@ -182,6 +229,7 @@ class _SalesforceSessionSheetState extends State<SalesforceSessionSheet> {
         _testSuccess = null;
         _testResultMessage = null;
       });
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Token pasted from clipboard! Click "Test Connection" to verify.'),
@@ -374,23 +422,54 @@ class _SalesforceSessionSheetState extends State<SalesforceSessionSheet> {
               ),
               const SizedBox(height: 10),
 
-              // Command helper box
+              // Auto Refresh 1-Click Button & Info Banner
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
                 ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.terminal, size: 18, color: Color(0xFF475569)),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Get fresh token on PC:\nsf org auth show-access-token --target-org SFA-org -p',
-                        style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: Color(0xFF334155)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF16A34A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        elevation: 0,
                       ),
+                      onPressed: _isAutoRefreshing ? null : _handleAutoRefresh,
+                      icon: _isAutoRefreshing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.bolt, size: 18, color: Colors.white),
+                      label: Text(
+                        _isAutoRefreshing ? 'Auto-Refreshing Token...' : '⚡ 1-Click Auto-Refresh Token',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(Icons.autorenew, size: 16, color: Color(0xFF15803D)),
+                        ),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Background Auto-Refresh Active: Expired tokens (401) refresh automatically from Salesforce CLI without manual intervention.',
+                            style: TextStyle(fontSize: 11, color: Color(0xFF15803D), height: 1.3),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

@@ -168,7 +168,35 @@ class SalesforceDynamicService {
         options.baseUrl = SalesforceAuthService.activeInstanceUrl;
         return handler.next(options);
       },
+      onError: (err, handler) async {
+        if (err.response?.statusCode == 401 && err.requestOptions.extra['retried_401'] != true) {
+          final freshToken = await SalesforceAuthService.autoRefreshToken(force: true);
+          if (freshToken != null && freshToken.isNotEmpty) {
+            final retryOptions = Options(
+              method: err.requestOptions.method,
+              headers: {
+                ...err.requestOptions.headers,
+                'Authorization': 'Bearer $freshToken',
+              },
+              extra: {...err.requestOptions.extra, 'retried_401': true},
+              contentType: err.requestOptions.contentType,
+              responseType: err.requestOptions.responseType,
+            );
+            try {
+              final retryRes = await Dio().request(
+                err.requestOptions.uri.toString(),
+                data: err.requestOptions.data,
+                queryParameters: err.requestOptions.queryParameters,
+                options: retryOptions,
+              );
+              return handler.resolve(retryRes);
+            } catch (_) {}
+          }
+        }
+        return handler.next(err);
+      },
     ));
+    SalesforceAuthService.addSessionListener(reloadSession);
     _initCleanData();
   }
 
