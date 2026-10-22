@@ -27,6 +27,31 @@ function salesforceProxyPlugin(): Plugin {
   return {
     name: 'salesforce-proxy',
     configureServer(server) {
+      // Dedicated Token Endpoint for Mobile App & External Services
+      server.middlewares.use('/api/token', (req, res) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        res.setHeader('Content-Type', 'application/json');
+
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 204;
+          return res.end();
+        }
+
+        let instanceUrl = 'https://orgfarm-03c6654659-dev-ed.develop.my.salesforce.com';
+        const activeTokenPath = path.resolve(process.cwd(), 'active_token.json');
+        let token = refreshToken(activeTokenPath, instanceUrl);
+
+        res.statusCode = 200;
+        res.end(JSON.stringify({
+          success: true,
+          accessToken: token,
+          instanceUrl: instanceUrl,
+          timestamp: new Date().toISOString()
+        }));
+      });
+
       server.middlewares.use('/api/salesforce', (req, res, _next) => {
         let token = process.env.SF_ACCESS_TOKEN || '';
         let instanceUrl = 'https://orgfarm-03c6654659-dev-ed.develop.my.salesforce.com';
