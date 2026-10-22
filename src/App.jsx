@@ -33,20 +33,20 @@ export default function App() {
   const [returnAssetSubTab, setReturnAssetSubTab] = useState('returns');
 
   // State Collections
-  const [allDistributors, setAllDistributors] = useState(DMSDataService.getAllDistributors());
-  const [distributor, setDistributor] = useState(DMSDataService.getDistributor());
-  const [outlets, setOutlets] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [stockHeld, setStockHeld] = useState([]);
-  const [stockMovements, setStockMovements] = useState([]);
-  const [tickets, setTickets] = useState([]);
-  const [returns, setReturns] = useState([]);
-  const [assets, setAssets] = useState([]);
+  const [allDistributors, setAllDistributors] = useState(() => DMSDataService.getAllDistributors());
+  const [distributor, setDistributor] = useState(() => DMSDataService.getDistributor());
+  const [outlets, setOutlets] = useState(() => DMSDataService.getRetailerOutlets());
+  const [orders, setOrders] = useState(() => DMSDataService.getOrders());
+  const [stockHeld, setStockHeld] = useState(() => DMSDataService.getStockHeld());
+  const [stockMovements, setStockMovements] = useState(() => DMSDataService.getStockMovements());
+  const [tickets, setTickets] = useState(() => DMSDataService.getTickets());
+  const [returns, setReturns] = useState(() => DMSDataService.getReturns());
+  const [assets, setAssets] = useState(() => DMSDataService.getAssets());
 
   // Reports
-  const [salesReport, setSalesReport] = useState(DMSDataService.getSalesVsTarget());
-  const [beatReport, setBeatReport] = useState(DMSDataService.getBeatProductivity());
-  const [coverageReport, setCoverageReport] = useState(DMSDataService.getOutletCoverage());
+  const [salesReport, setSalesReport] = useState(() => DMSDataService.getSalesVsTarget());
+  const [beatReport, setBeatReport] = useState(() => DMSDataService.getBeatProductivity());
+  const [coverageReport, setCoverageReport] = useState(() => DMSDataService.getOutletCoverage());
 
   // Search & Filter State
   const [outletSearch, setOutletSearch] = useState('');
@@ -173,27 +173,30 @@ export default function App() {
   };
 
   // Filtered Outlets
-  const filteredOutlets = outlets.filter(o => {
+  const filteredOutlets = (outlets || []).filter(o => {
+    if (!o) return false;
+    const q = (outletSearch || '').toLowerCase();
     const matchesSearch =
-      o.name.toLowerCase().includes(outletSearch.toLowerCase()) ||
-      o.shopName.toLowerCase().includes(outletSearch.toLowerCase()) ||
-      o.code.toLowerCase().includes(outletSearch.toLowerCase()) ||
-      o.assignedSRName.toLowerCase().includes(outletSearch.toLowerCase());
+      (o.name || '').toLowerCase().includes(q) ||
+      (o.shopName || '').toLowerCase().includes(q) ||
+      (o.code || '').toLowerCase().includes(q) ||
+      (o.assignedSRName || '').toLowerCase().includes(q);
     const matchesBeat = selectedBeatFilter === 'All' || o.beatName === selectedBeatFilter;
     return matchesSearch && matchesBeat;
   });
 
   // Filtered Tickets
-  const filteredTickets = tickets.filter(t => {
+  const filteredTickets = (tickets || []).filter(t => {
+    if (!t) return false;
     if (selectedTicketFilter === 'All') return true;
     return t.status === selectedTicketFilter;
   });
 
   // Quick Stats
-  const totalStockUnits = stockHeld.reduce((acc, s) => acc + s.availableStock, 0);
-  const totalStockValue = stockHeld.reduce((acc, s) => acc + s.availableStock * s.unitPrice, 0);
-  const pendingOrdersCount = orders.filter(o => o.status === 'Submitted' || o.status === 'Confirmed').length;
-  const openTicketsCount = tickets.filter(t => t.status === 'Open' || t.status === 'In Progress').length;
+  const totalStockUnits = (stockHeld || []).reduce((acc, s) => acc + (s.availableStock || 0), 0);
+  const totalStockValue = (stockHeld || []).reduce((acc, s) => acc + (s.availableStock || 0) * (s.unitPrice || 25), 0);
+  const pendingOrdersCount = (orders || []).filter(o => o.status === 'Submitted' || o.status === 'Confirmed' || o.status === 'Pending Fulfillment').length;
+  const openTicketsCount = (tickets || []).filter(t => t.status === 'Open' || t.status === 'In Progress').length;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
@@ -355,24 +358,24 @@ export default function App() {
                 <span className="text-blue-300 text-xs font-semibold uppercase tracking-wider">
                   Distributor Operations
                 </span>
-                <h2 className="text-2xl font-bold mt-1">{distributor.name} — SR & Retail Outlets</h2>
+                <h2 className="text-2xl font-bold mt-1">{distributor?.name || 'Distributor Operations'} — SR & Retail Outlets</h2>
                 <p className="text-sm text-blue-100 max-w-2xl mt-1">
-                  {distributor.name} manages {distributor.salesReps.length} Sales Representatives (SRs), {distributor.beats.length} Beat routes, and {outlets.length} assigned retail outlets.
+                  {distributor?.name || 'Distributor'} manages {(distributor?.salesReps || []).length} Sales Representatives (SRs), {(distributor?.beats || []).length} Beat routes, and {(outlets || []).length} assigned retail outlets.
                 </p>
               </div>
 
               <div className="flex space-x-4 mt-4 lg:mt-0">
                 <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl text-center border border-white/10">
                   <span className="text-xs text-blue-200">Total Outlets</span>
-                  <div className="text-2xl font-bold">{outlets.length}</div>
+                  <div className="text-2xl font-bold">{(outlets || []).length}</div>
                 </div>
                 <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl text-center border border-white/10">
                   <span className="text-xs text-blue-200">Active SRs</span>
-                  <div className="text-2xl font-bold">{distributor.salesReps.length}</div>
+                  <div className="text-2xl font-bold">{(distributor?.salesReps || []).length}</div>
                 </div>
                 <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl text-center border border-white/10">
                   <span className="text-xs text-blue-200">Total Beats</span>
-                  <div className="text-2xl font-bold">{distributor.beats.length}</div>
+                  <div className="text-2xl font-bold">{(distributor?.beats || []).length}</div>
                 </div>
               </div>
             </div>
@@ -385,7 +388,7 @@ export default function App() {
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {distributor.salesReps.map(sr => (
+                {(distributor?.salesReps || []).map(sr => (
                   <div key={sr.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-blue-400 transition">
                     <div className="flex justify-between items-start">
                       <div className="flex items-center space-x-3">
@@ -457,7 +460,7 @@ export default function App() {
                     className="text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="All">All Beats</option>
-                    {distributor.beats.map(b => (
+                    {(distributor?.beats || []).map(b => (
                       <option key={b.id} value={b.name}>{b.name}</option>
                     ))}
                   </select>

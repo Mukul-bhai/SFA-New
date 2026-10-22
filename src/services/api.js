@@ -205,14 +205,14 @@ const SEED_ORDERS = [
 
 // Seed Inventory matching Salesforce Inventory__c
 const SEED_STOCK = [
-  { id: 'INV-01', warehouseName: 'Primary Central Depot A', distributorId: 'a02g800000DCme5AAD', productName: 'Parle-G Original Glucose Biscuit', productCode: 'P-GLU-001', batchNo: 'B2610-A1', expiryDate: '2027-04-30', physicalStock: 1200, reservedStock: 350, availableStock: 850, unit: 'Cases', status: 'In Stock' },
-  { id: 'INV-02', warehouseName: 'Primary Central Depot A', distributorId: 'a02g800000DCme5AAD', productName: 'Monaco Classic Salted Crackers', productCode: 'P-MON-002', batchNo: 'B2610-A2', expiryDate: '2027-03-31', physicalStock: 600, reservedStock: 150, availableStock: 450, unit: 'Cases', status: 'In Stock' },
-  { id: 'INV-03', warehouseName: 'Primary Central Depot A', distributorId: 'a02g800000DCme5AAD', productName: 'Krackjack Sweet & Salty Biscuit', productCode: 'P-KRK-003', batchNo: 'B2609-K1', expiryDate: '2027-02-28', physicalStock: 400, reservedStock: 20, availableStock: 380, unit: 'Cases', status: 'In Stock' },
-  { id: 'INV-04', warehouseName: 'Primary Central Depot A', distributorId: 'a02g800000DCme5AAD', productName: 'Hide & Seek Chocolate Chip Cookies', productCode: 'P-HNS-004', batchNo: 'B2610-H1', expiryDate: '2027-05-15', physicalStock: 180, reservedStock: 33, availableStock: 147, unit: 'Cases', status: 'In Stock' },
-  { id: 'INV-05', warehouseName: 'Primary Central Depot A', distributorId: 'a02g800000DCme5AAD', productName: 'Kopiko Coffee Candy Jar', productCode: 'P-KOP-010', batchNo: 'B2608-KP', expiryDate: '2026-12-31', physicalStock: 40, reservedStock: 0, availableStock: 40, unit: 'Jars', status: 'Low Stock' },
-  { id: 'INV-06', warehouseName: 'Royal Central Depot 1', distributorId: 'a02g800000DCyYnAAL', productName: 'Parle-G Original Glucose Biscuit', productCode: 'P-GLU-001', batchNo: 'B2610-R1', expiryDate: '2027-04-30', physicalStock: 800, reservedStock: 150, availableStock: 650, unit: 'Cases', status: 'In Stock' },
-  { id: 'INV-07', warehouseName: 'Royal Central Depot 1', distributorId: 'a02g800000DCyYnAAL', productName: 'Parle 20-20 Cashew Butter Cookies', productCode: 'P-TTW-005', batchNo: 'B2610-R2', expiryDate: '2027-03-31', physicalStock: 500, reservedStock: 76, availableStock: 424, unit: 'Cases', status: 'In Stock' },
-  { id: 'INV-08', warehouseName: 'Backup Warehouse B', distributorId: 'a02g800000DCme6AAD', productName: 'Parle Gold Rich Glucose Biscuit', productCode: 'P-GLD-009', batchNo: 'B2610-Z1', expiryDate: '2027-06-30', physicalStock: 450, reservedStock: 0, availableStock: 450, unit: 'Cases', status: 'In Stock' }
+  { id: 'INV-01', warehouseName: 'Primary Central Depot A', distributorId: 'a02g800000DCme5AAD', productName: 'Parle-G Original Glucose Biscuit', productCode: 'P-GLU-001', batchNo: 'B2610-A1', expiryDate: '2027-04-30', physicalStock: 1200, reservedStock: 350, availableStock: 850, unit: 'Cases', unitPrice: 21.5, status: 'In Stock' },
+  { id: 'INV-02', warehouseName: 'Primary Central Depot A', distributorId: 'a02g800000DCme5AAD', productName: 'Monaco Classic Salted Crackers', productCode: 'P-MON-002', batchNo: 'B2610-A2', expiryDate: '2027-03-31', physicalStock: 600, reservedStock: 150, availableStock: 450, unit: 'Cases', unitPrice: 17.2, status: 'In Stock' },
+  { id: 'INV-03', warehouseName: 'Primary Central Depot A', distributorId: 'a02g800000DCme5AAD', productName: 'Krackjack Sweet & Salty Biscuit', productCode: 'P-KRK-003', batchNo: 'B2609-K1', expiryDate: '2027-02-28', physicalStock: 400, reservedStock: 20, availableStock: 380, unit: 'Cases', unitPrice: 25.8, status: 'In Stock' },
+  { id: 'INV-04', warehouseName: 'Primary Central Depot A', distributorId: 'a02g800000DCme5AAD', productName: 'Hide & Seek Chocolate Chip Cookies', productCode: 'P-HNS-004', batchNo: 'B2610-H1', expiryDate: '2027-05-15', physicalStock: 180, reservedStock: 33, availableStock: 147, unit: 'Cases', unitPrice: 34.0, status: 'In Stock' },
+  { id: 'INV-05', warehouseName: 'Primary Central Depot A', distributorId: 'a02g800000DCme5AAD', productName: 'Kopiko Coffee Candy Jar', productCode: 'P-KOP-010', batchNo: 'B2608-KP', expiryDate: '2026-12-31', physicalStock: 40, reservedStock: 0, availableStock: 40, unit: 'Jars', unitPrice: 120.0, status: 'Low Stock' },
+  { id: 'INV-06', warehouseName: 'Royal Central Depot 1', distributorId: 'a02g800000DCyYnAAL', productName: 'Parle-G Original Glucose Biscuit', productCode: 'P-GLU-001', batchNo: 'B2610-R1', expiryDate: '2027-04-30', physicalStock: 800, reservedStock: 150, availableStock: 650, unit: 'Cases', unitPrice: 21.5, status: 'In Stock' },
+  { id: 'INV-07', warehouseName: 'Royal Central Depot 1', distributorId: 'a02g800000DCyYnAAL', productName: 'Parle 20-20 Cashew Butter Cookies', productCode: 'P-TTW-005', batchNo: 'B2610-R2', expiryDate: '2027-03-31', physicalStock: 500, reservedStock: 76, availableStock: 424, unit: 'Cases', unitPrice: 21.25, status: 'In Stock' },
+  { id: 'INV-08', warehouseName: 'Backup Warehouse B', distributorId: 'a02g800000DCme6AAD', productName: 'Parle Gold Rich Glucose Biscuit', productCode: 'P-GLD-009', batchNo: 'B2610-Z1', expiryDate: '2027-06-30', physicalStock: 450, reservedStock: 0, availableStock: 450, unit: 'Cases', unitPrice: 34.0, status: 'In Stock' }
 ];
 
 const SEED_TICKETS = [
@@ -246,11 +246,17 @@ const setStored = (key, val) => {
 export class DMSDataService {
   // 1. Multi-Distributor Selection & Live Salesforce Sync
   static getActiveDistributorId() {
-    return localStorage.getItem(STORAGE_KEYS.ACTIVE_DIST_ID) || 'a02g800000DCme5AAD';
+    try {
+      return localStorage.getItem(STORAGE_KEYS.ACTIVE_DIST_ID) || SEED_DISTRIBUTORS[0].id;
+    } catch (_) {
+      return SEED_DISTRIBUTORS[0].id;
+    }
   }
 
   static setActiveDistributorId(distributorId) {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_DIST_ID, distributorId);
+    try {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_DIST_ID, distributorId);
+    } catch (_) {}
   }
 
   // Fetch all distributors dynamically from Salesforce REST (via Vite Proxy)
@@ -262,7 +268,7 @@ export class DMSDataService {
         if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
           // Merge with UI metadata like beats and SRs
           const sfDistributors = json.data.map(d => {
-            const existingSeed = SEED_DISTRIBUTORS.find(s => s.id === d.id) || {};
+            const existingSeed = SEED_DISTRIBUTORS.find(s => s.id === d.id) || SEED_DISTRIBUTORS[0];
             return {
               id: d.id,
               code: d.code || existingSeed.code || 'DIST-CODE',
@@ -275,10 +281,10 @@ export class DMSDataService {
               area: existingSeed.area || 'Regional Operating Zone',
               phone: existingSeed.phone || '+91 98000 00000',
               email: existingSeed.email || 'ops@distributor.com',
-              salesReps: existingSeed.salesReps || [
+              salesReps: (existingSeed.salesReps && existingSeed.salesReps.length > 0) ? existingSeed.salesReps : [
                 { id: `SR-${d.id.substring(d.id.length - 2)}`, name: 'Field Sales Executive', code: 'EMP-SR-01', phone: '+91 98112 33441', email: 'sales@dist.com', monthlyTarget: 400000, achievedAmount: 320000, strikeRate: 85.0, status: 'Active' }
               ],
-              beats: existingSeed.beats || [
+              beats: (existingSeed.beats && existingSeed.beats.length > 0) ? existingSeed.beats : [
                 { id: `BEAT-${d.id.substring(d.id.length - 2)}`, name: 'Main City Beat Route', code: 'BT-01', dayOfWeek: 'Monday', assignedSR: 'Field Sales Executive' }
               ]
             };
@@ -294,13 +300,26 @@ export class DMSDataService {
   }
 
   static getAllDistributors() {
-    return getStored(STORAGE_KEYS.DISTRIBUTORS_CACHE, SEED_DISTRIBUTORS);
+    const cached = getStored(STORAGE_KEYS.DISTRIBUTORS_CACHE, SEED_DISTRIBUTORS);
+    const list = (Array.isArray(cached) && cached.length > 0) ? cached : SEED_DISTRIBUTORS;
+    return list.map(d => ({
+      ...SEED_DISTRIBUTORS[0],
+      ...d,
+      salesReps: (d && Array.isArray(d.salesReps) && d.salesReps.length > 0) ? d.salesReps : SEED_DISTRIBUTORS[0].salesReps,
+      beats: (d && Array.isArray(d.beats) && d.beats.length > 0) ? d.beats : SEED_DISTRIBUTORS[0].beats
+    }));
   }
 
   static getDistributor() {
     const list = this.getAllDistributors();
     const activeId = this.getActiveDistributorId();
-    return list.find(d => d.id === activeId) || list[0] || SEED_DISTRIBUTORS[0];
+    const found = list.find(d => d.id === activeId) || list[0] || SEED_DISTRIBUTORS[0];
+    return {
+      ...SEED_DISTRIBUTORS[0],
+      ...found,
+      salesReps: (found && Array.isArray(found.salesReps) && found.salesReps.length > 0) ? found.salesReps : SEED_DISTRIBUTORS[0].salesReps,
+      beats: (found && Array.isArray(found.beats) && found.beats.length > 0) ? found.beats : SEED_DISTRIBUTORS[0].beats
+    };
   }
 
   // 2. Retailer Outlets (Filtered by Active Distributor)
