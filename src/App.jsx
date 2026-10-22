@@ -23,44 +23,29 @@ import {
   Truck
 } from 'lucide-react';
 import { DMSDataService } from './services/api';
-import type {
-  Distributor,
-  RetailerOutlet,
-  DMSOrder,
-  StockHeldItem,
-  StockMovement,
-  DMSTicket,
-  ProductReturn,
-  CompanyAsset,
-  SalesVsTargetReport,
-  BeatProductivityReport,
-  OutletCoverageReport
-} from './types';
 
 export default function App() {
   // Navigation Tabs: 6 Core Modules from Script
-  const [activeTab, setActiveTab] = useState<
-    'distributor_outlets' | 'orders' | 'inventory' | 'tickets' | 'returns_assets' | 'reports'
-  >('distributor_outlets');
+  const [activeTab, setActiveTab] = useState('distributor_outlets');
 
   // Sub-tabs
-  const [invSubTab, setInvSubTab] = useState<'stock_in' | 'stock_held' | 'stock_out' | 'ledger'>('stock_held');
-  const [returnAssetSubTab, setReturnAssetSubTab] = useState<'returns' | 'assets'>('returns');
+  const [invSubTab, setInvSubTab] = useState('stock_held');
+  const [returnAssetSubTab, setReturnAssetSubTab] = useState('returns');
 
   // State Collections
-  const [distributor, setDistributor] = useState<Distributor>(DMSDataService.getDistributor());
-  const [outlets, setOutlets] = useState<RetailerOutlet[]>([]);
-  const [orders, setOrders] = useState<DMSOrder[]>([]);
-  const [stockHeld, setStockHeld] = useState<StockHeldItem[]>([]);
-  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
-  const [tickets, setTickets] = useState<DMSTicket[]>([]);
-  const [returns, setReturns] = useState<ProductReturn[]>([]);
-  const [assets, setAssets] = useState<CompanyAsset[]>([]);
+  const [distributor, setDistributor] = useState(DMSDataService.getDistributor());
+  const [outlets, setOutlets] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [stockHeld, setStockHeld] = useState([]);
+  const [stockMovements, setStockMovements] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [returns, setReturns] = useState([]);
+  const [assets, setAssets] = useState([]);
 
   // Reports
-  const [salesReport, setSalesReport] = useState<SalesVsTargetReport>(DMSDataService.getSalesVsTarget());
-  const [beatReport, setBeatReport] = useState<BeatProductivityReport[]>(DMSDataService.getBeatProductivity());
-  const [coverageReport, setCoverageReport] = useState<OutletCoverageReport>(DMSDataService.getOutletCoverage());
+  const [salesReport, setSalesReport] = useState(DMSDataService.getSalesVsTarget());
+  const [beatReport, setBeatReport] = useState(DMSDataService.getBeatProductivity());
+  const [coverageReport, setCoverageReport] = useState(DMSDataService.getOutletCoverage());
 
   // Search & Filter State
   const [outletSearch, setOutletSearch] = useState('');
@@ -68,7 +53,7 @@ export default function App() {
   const [selectedTicketFilter, setSelectedTicketFilter] = useState('All');
 
   // Modals
-  const [selectedOrderForModal, setSelectedOrderForModal] = useState<DMSOrder | null>(null);
+  const [selectedOrderForModal, setSelectedOrderForModal] = useState(null);
   const [showGRNModal, setShowGRNModal] = useState(false);
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
 
@@ -80,15 +65,15 @@ export default function App() {
   const [grnPO, setGrnPO] = useState('PO-2026-9021');
 
   // Form State: Ticket
-  const [ticketCategory, setTicketCategory] = useState<DMSTicket['category']>('Product Issue');
-  const [ticketPriority, setTicketPriority] = useState<DMSTicket['priority']>('High');
+  const [ticketCategory, setTicketCategory] = useState('Product Issue');
+  const [ticketPriority, setTicketPriority] = useState('High');
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketDesc, setTicketDesc] = useState('');
 
   // Toast / Notification
-  const [notification, setNotification] = useState<string | null>(null);
+  const [notification, setNotification] = useState(null);
 
-  const triggerToast = (msg: string) => {
+  const triggerToast = (msg) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3500);
   };
@@ -112,13 +97,13 @@ export default function App() {
   }, []);
 
   // Handlers
-  const handleOrderStatusUpdate = (orderId: string, status: DMSOrder['status']) => {
+  const handleOrderStatusUpdate = (orderId, status) => {
     DMSDataService.updateOrderStatus(orderId, status);
     reloadData();
     triggerToast(`Order status updated to ${status}. Stock movements recorded.`);
   };
 
-  const handleCreateGRN = (e: React.FormEvent) => {
+  const handleCreateGRN = (e) => {
     e.preventDefault();
     if (grnQty <= 0) return;
     DMSDataService.createGRN({
@@ -133,7 +118,7 @@ export default function App() {
     triggerToast(`GRN Created successfully! Added ${grnQty} units to live stock.`);
   };
 
-  const handleCreateTicket = (e: React.FormEvent) => {
+  const handleCreateTicket = (e) => {
     e.preventDefault();
     if (!ticketSubject.trim()) return;
     DMSDataService.createTicket({
@@ -150,19 +135,19 @@ export default function App() {
     triggerToast('Support ticket raised and dispatched to DO desk!');
   };
 
-  const handleUpdateTicketStatus = (ticketId: string, status: DMSTicket['status'], notes?: string, reason?: string) => {
+  const handleUpdateTicketStatus = (ticketId, status, notes, reason) => {
     DMSDataService.updateTicketStatus(ticketId, status, notes, reason);
     reloadData();
     triggerToast(`Ticket updated to ${status}`);
   };
 
-  const handleApproveReturn = (returnId: string) => {
+  const handleApproveReturn = (returnId) => {
     DMSDataService.updateReturnStatus(returnId, 'Approved & Restocked');
     reloadData();
     triggerToast('Return approved! Salable items restocked & Credit Note generated.');
   };
 
-  const handleAssetServiceUpdate = (assetId: string, status: CompanyAsset['status'], remarks: string) => {
+  const handleAssetServiceUpdate = (assetId, status, remarks) => {
     DMSDataService.updateAssetStatus(assetId, status, remarks);
     reloadData();
     triggerToast(`Asset status updated to ${status}`);
@@ -1654,7 +1639,7 @@ export default function App() {
                   <label className="text-xs font-semibold text-slate-700 block mb-1">Category</label>
                   <select
                     value={ticketCategory}
-                    onChange={e => setTicketCategory(e.target.value as DMSTicket['category'])}
+                    onChange={e => setTicketCategory(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                   >
                     <option value="Product Issue">Product Issue (Damaged/Defect)</option>
@@ -1668,7 +1653,7 @@ export default function App() {
                   <label className="text-xs font-semibold text-slate-700 block mb-1">Priority</label>
                   <select
                     value={ticketPriority}
-                    onChange={e => setTicketPriority(e.target.value as DMSTicket['priority'])}
+                    onChange={e => setTicketPriority(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                   >
                     <option value="Critical">Critical</option>

@@ -1,22 +1,8 @@
-import type {
-  Distributor,
-  RetailerOutlet,
-  DMSOrder,
-  StockHeldItem,
-  StockMovement,
-  DMSTicket,
-  ProductReturn,
-  CompanyAsset,
-  SalesVsTargetReport,
-  BeatProductivityReport,
-  OutletCoverageReport
-} from '../types';
-
 // ==========================================
-// SEED MOCK DATA MATCHING BRD & SCRIPT
+// SEED MOCK DATA MATCHING BRD & SCRIPT (JS)
 // ==========================================
 
-const INITIAL_DISTRIBUTOR: Distributor = {
+const INITIAL_DISTRIBUTOR = {
   id: 'DIST-001',
   code: 'DIST-MYF-001',
   name: 'Myfair Distribution Hub',
@@ -67,8 +53,8 @@ const INITIAL_DISTRIBUTOR: Distributor = {
 };
 
 // Generate 70 outlets managed by Myfair (including Balaji Stores, Gupta, Sharma, etc.)
-const generate70Outlets = (): RetailerOutlet[] => {
-  const list: RetailerOutlet[] = [
+const generate70Outlets = () => {
+  const list = [
     {
       id: 'OUT-01',
       code: 'RET-MYF-01',
@@ -183,7 +169,7 @@ const generate70Outlets = (): RetailerOutlet[] => {
 };
 
 // 2. Orders from SFA Mobile App
-const INITIAL_ORDERS: DMSOrder[] = [
+const INITIAL_ORDERS = [
   {
     id: 'ORD-101',
     orderNumber: 'SFA-ORD-2026-001',
@@ -238,7 +224,7 @@ const INITIAL_ORDERS: DMSOrder[] = [
     dispatchDate: '2026-10-20 09:00 AM',
     items: [
       { id: 'LI-7', productId: 'P-02', productName: 'Malkist Cheese Crackers 120g', quantity: 60, unitPrice: 35, lineTotal: 2100 },
-      { id: 'LI-8', productId: 'P-04', productName: 'Frooti Fresh Mango Drink 250ml', quantity: 60, unitPrice: 25, lineTotal: 1500 }
+      { id: 'LI-8', productId: 'P-04', productName: 'Frooti Fresh Mango Drink 250ml', quantity: 40, unitPrice: 25, lineTotal: 1500 }
     ]
   },
   {
@@ -263,7 +249,7 @@ const INITIAL_ORDERS: DMSOrder[] = [
 ];
 
 // 3. Stock & Inventory: The 4 Processes
-const INITIAL_STOCK_HELD: StockHeldItem[] = [
+const INITIAL_STOCK_HELD = [
   {
     id: 'STK-01',
     productId: 'P-01',
@@ -356,7 +342,7 @@ const INITIAL_STOCK_HELD: StockHeldItem[] = [
   }
 ];
 
-const INITIAL_STOCK_MOVEMENTS: StockMovement[] = [
+const INITIAL_STOCK_MOVEMENTS = [
   {
     id: 'MOV-01',
     movementDate: '2026-10-18 09:30 AM',
@@ -396,7 +382,7 @@ const INITIAL_STOCK_MOVEMENTS: StockMovement[] = [
 ];
 
 // 4. Tickets (Product, Portal, Delivery issues with 4 statuses)
-const INITIAL_TICKETS: DMSTicket[] = [
+const INITIAL_TICKETS = [
   {
     id: 'TCK-01',
     ticketNumber: 'TCK-2026-041',
@@ -453,7 +439,7 @@ const INITIAL_TICKETS: DMSTicket[] = [
 ];
 
 // 5. Returns & Assets
-const INITIAL_RETURNS: ProductReturn[] = [
+const INITIAL_RETURNS = [
   {
     id: 'RET-01',
     returnNumber: 'RET-2026-012',
@@ -482,7 +468,7 @@ const INITIAL_RETURNS: ProductReturn[] = [
   }
 ];
 
-const INITIAL_ASSETS: CompanyAsset[] = [
+const INITIAL_ASSETS = [
   {
     id: 'AST-01',
     assetCode: 'FRZ-MYF-001',
@@ -551,7 +537,7 @@ const STORAGE_KEYS = {
   ASSETS: 'dms_assets_data'
 };
 
-const getFromStorage = <T>(key: string, defaultData: T): T => {
+const getFromStorage = (key, defaultData) => {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) {
@@ -564,7 +550,7 @@ const getFromStorage = <T>(key: string, defaultData: T): T => {
   }
 };
 
-const saveToStorage = <T>(key: string, data: T) => {
+const saveToStorage = (key, data) => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch (e) {
@@ -573,25 +559,25 @@ const saveToStorage = <T>(key: string, data: T) => {
 };
 
 // ==========================================
-// API SERVICE EXPORT
+// API SERVICE EXPORT (JS)
 // ==========================================
 
 export class DMSDataService {
   // 1. Distributor & Outlets
-  static getDistributor(): Distributor {
-    return getFromStorage<Distributor>(STORAGE_KEYS.DISTRIBUTOR, INITIAL_DISTRIBUTOR);
+  static getDistributor() {
+    return getFromStorage(STORAGE_KEYS.DISTRIBUTOR, INITIAL_DISTRIBUTOR);
   }
 
-  static getRetailerOutlets(): RetailerOutlet[] {
-    return getFromStorage<RetailerOutlet[]>(STORAGE_KEYS.OUTLETS, generate70Outlets());
+  static getRetailerOutlets() {
+    return getFromStorage(STORAGE_KEYS.OUTLETS, generate70Outlets());
   }
 
   // 2. Orders
-  static getOrders(): DMSOrder[] {
-    return getFromStorage<DMSOrder[]>(STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
+  static getOrders() {
+    return getFromStorage(STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
   }
 
-  static updateOrderStatus(orderId: string, newStatus: DMSOrder['status']): DMSOrder[] {
+  static updateOrderStatus(orderId, newStatus) {
     const orders = this.getOrders();
     const updated = orders.map(o => {
       if (o.id === orderId) {
@@ -627,22 +613,16 @@ export class DMSDataService {
   }
 
   // 3. Stock & Inventory (The 4 Processes)
-  static getStockHeld(): StockHeldItem[] {
-    return getFromStorage<StockHeldItem[]>(STORAGE_KEYS.STOCK, INITIAL_STOCK_HELD);
+  static getStockHeld() {
+    return getFromStorage(STORAGE_KEYS.STOCK, INITIAL_STOCK_HELD);
   }
 
-  static getStockMovements(): StockMovement[] {
-    return getFromStorage<StockMovement[]>(STORAGE_KEYS.MOVEMENTS, INITIAL_STOCK_MOVEMENTS);
+  static getStockMovements() {
+    return getFromStorage(STORAGE_KEYS.MOVEMENTS, INITIAL_STOCK_MOVEMENTS);
   }
 
   // Process 1: Stock In — Goods Received Note (GRN)
-  static createGRN(entry: {
-    productName: string;
-    quantity: number;
-    batchNo: string;
-    expiryDate: string;
-    poNumber: string;
-  }): { success: boolean; newStock: number } {
+  static createGRN(entry) {
     const stocks = this.getStockHeld();
     let currentStock = 0;
     const updatedStocks = stocks.map(s => {
@@ -656,7 +636,7 @@ export class DMSDataService {
           availableStock: newAvail,
           batchNo: entry.batchNo || s.batchNo,
           expiryDate: entry.expiryDate || s.expiryDate,
-          status: (newAvail > 50 ? 'In Stock' : 'Low Stock') as StockHeldItem['status']
+          status: newAvail > 50 ? 'In Stock' : 'Low Stock'
         };
       }
       return s;
@@ -678,13 +658,13 @@ export class DMSDataService {
     return { success: true, newStock: currentStock };
   }
 
-  static recordStockMovement(data: Omit<StockMovement, 'id' | 'movementDate' | 'resultingStock'>): StockMovement {
+  static recordStockMovement(data) {
     const movements = this.getStockMovements();
     const stocks = this.getStockHeld();
     const targetProduct = stocks.find(s => s.productName.toLowerCase() === data.productName.toLowerCase());
     const resultingStock = targetProduct ? targetProduct.availableStock : 0;
 
-    const newMov: StockMovement = {
+    const newMov = {
       id: `MOV-${Date.now()}`,
       movementDate: new Date().toLocaleString(),
       ...data,
@@ -697,13 +677,13 @@ export class DMSDataService {
   }
 
   // 4. Ticket Management
-  static getTickets(): DMSTicket[] {
-    return getFromStorage<DMSTicket[]>(STORAGE_KEYS.TICKETS, INITIAL_TICKETS);
+  static getTickets() {
+    return getFromStorage(STORAGE_KEYS.TICKETS, INITIAL_TICKETS);
   }
 
-  static createTicket(ticket: Omit<DMSTicket, 'id' | 'ticketNumber' | 'raisedDate' | 'status'>): DMSTicket {
+  static createTicket(ticket) {
     const tickets = this.getTickets();
-    const newTicket: DMSTicket = {
+    const newTicket = {
       id: `TCK-${Date.now()}`,
       ticketNumber: `TCK-2026-${(tickets.length + 45).toString().padStart(3, '0')}`,
       raisedDate: new Date().toLocaleString(),
@@ -716,12 +696,7 @@ export class DMSDataService {
     return newTicket;
   }
 
-  static updateTicketStatus(
-    ticketId: string,
-    newStatus: DMSTicket['status'],
-    notes?: string,
-    rejectionReason?: string
-  ): DMSTicket[] {
+  static updateTicketStatus(ticketId, newStatus, notes, rejectionReason) {
     const tickets = this.getTickets();
     const updated = tickets.map(t => {
       if (t.id === ticketId) {
@@ -740,11 +715,11 @@ export class DMSDataService {
   }
 
   // 5. Returns & Assets
-  static getReturns(): ProductReturn[] {
-    return getFromStorage<ProductReturn[]>(STORAGE_KEYS.RETURNS, INITIAL_RETURNS);
+  static getReturns() {
+    return getFromStorage(STORAGE_KEYS.RETURNS, INITIAL_RETURNS);
   }
 
-  static updateReturnStatus(returnId: string, newStatus: ProductReturn['status']): ProductReturn[] {
+  static updateReturnStatus(returnId, newStatus) {
     const returns = this.getReturns();
     const updated = returns.map(r => {
       if (r.id === returnId) {
@@ -761,11 +736,11 @@ export class DMSDataService {
     return updated;
   }
 
-  static getAssets(): CompanyAsset[] {
-    return getFromStorage<CompanyAsset[]>(STORAGE_KEYS.ASSETS, INITIAL_ASSETS);
+  static getAssets() {
+    return getFromStorage(STORAGE_KEYS.ASSETS, INITIAL_ASSETS);
   }
 
-  static updateAssetStatus(assetId: string, newStatus: CompanyAsset['status'], remarks?: string): CompanyAsset[] {
+  static updateAssetStatus(assetId, newStatus, remarks) {
     const assets = this.getAssets();
     const updated = assets.map(a => {
       if (a.id === assetId) {
@@ -783,7 +758,7 @@ export class DMSDataService {
   }
 
   // 6. Dashboards & Reports
-  static getSalesVsTarget(): SalesVsTargetReport {
+  static getSalesVsTarget() {
     return {
       period: 'October 2026 (Month-to-Date)',
       srMetrics: [
@@ -813,7 +788,7 @@ export class DMSDataService {
     };
   }
 
-  static getBeatProductivity(): BeatProductivityReport[] {
+  static getBeatProductivity() {
     return [
       { beatName: 'Monday Market Beat', assignedSR: 'Rahul Sharma', totalPlannedShops: 12, visitedShops: 12, billedOrders: 11, strikeRatePct: 91.6, totalOrderValue: 88400 },
       { beatName: 'Tuesday Coastal Beat', assignedSR: 'Amit Verma', totalPlannedShops: 11, visitedShops: 11, billedOrders: 9, strikeRatePct: 81.8, totalOrderValue: 71200 },
@@ -824,7 +799,7 @@ export class DMSDataService {
     ];
   }
 
-  static getOutletCoverage(): OutletCoverageReport {
+  static getOutletCoverage() {
     const outlets = this.getRetailerOutlets();
     const active = outlets.filter(o => o.status === 'Active Buyer').length;
     const inactive = outlets.filter(o => o.status === 'Inactive / Needs Attention');
@@ -844,7 +819,6 @@ export class DMSDataService {
     };
   }
 
-  // Reset to default seed
   static resetAllData() {
     localStorage.removeItem(STORAGE_KEYS.DISTRIBUTOR);
     localStorage.removeItem(STORAGE_KEYS.OUTLETS);
