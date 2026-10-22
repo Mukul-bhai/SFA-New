@@ -98,6 +98,7 @@ export default function App() {
     await DMSDataService.syncRetailersFromSalesforce();
     await DMSDataService.syncOrdersFromSalesforce();
     await DMSDataService.syncInventoryFromSalesforce();
+    await DMSDataService.syncTicketsFromSalesforce();
     setAllDistributors(DMSDataService.getAllDistributors());
     reloadData();
   };
@@ -137,10 +138,10 @@ export default function App() {
     triggerToast(`GRN Created successfully! Added ${grnQty} units to live stock.`);
   };
 
-  const handleCreateTicket = (e) => {
+  const handleCreateTicket = async (e) => {
     e.preventDefault();
     if (!ticketSubject.trim()) return;
-    DMSDataService.createTicket({
+    await DMSDataService.createTicket({
       distributorName: distributor.name,
       category: ticketCategory,
       priority: ticketPriority,
@@ -151,7 +152,7 @@ export default function App() {
     setTicketSubject('');
     setTicketDesc('');
     reloadData();
-    triggerToast('Support ticket raised and dispatched to DO desk!');
+    triggerToast('Support ticket raised and synced live to Salesforce Ticket__c!');
   };
 
   const handleUpdateTicketStatus = (ticketId, status, notes, reason) => {

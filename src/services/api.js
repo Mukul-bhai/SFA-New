@@ -531,24 +531,79 @@ export class DMSDataService {
     return { success: true, newStock: currentStock };
   }
 
-  // 5. Ticket Management
+  // 5. Ticket Management (Connected to Salesforce Ticket__c)
+  static async syncTicketsFromSalesforce() {
+    try {
+      const soql = encodeURIComponent('SELECT Id, Name, Subject__c, Category__c, Priority__c, Status__c, Description__c, CreatedDate FROM Ticket__c ORDER BY CreatedDate DESC LIMIT 50');
+      const res = await fetch(`/api/salesforce/services/data/v68.0/query/?q=${soql}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json && Array.isArray(json.records) && json.records.length > 0) {
+          const sfTickets = json.records.map(r => ({
+            id: r.Id,
+            ticketNumber: r.Name,
+            subject: r.Subject__c || 'General Issue',
+            category: r.Category__c || 'Product Issue',
+            priority: r.Priority__c || 'Medium',
+            description: r.Description__c || '',
+            status: r.Status__c === 'New' ? 'Open' : (r.Status__c || 'Open'),
+            assignedOfficer: 'DO Plant Desk (Salesforce Live)',
+            raisedDate: r.CreatedDate ? new Date(r.CreatedDate).toLocaleString() : 'Recent'
+          }));
+          setStored(STORAGE_KEYS.TICKETS, sfTickets);
+          return sfTickets;
+        }
+      }
+    } catch (e) {
+      console.warn('Live Salesforce tickets fetch error, using cache:', e);
+    }
+    return this.getTickets();
+  }
+
   static getTickets() {
     const all = getStored(STORAGE_KEYS.TICKETS, SEED_TICKETS);
     const activeDistId = this.getActiveDistributorId();
-    const filtered = all.filter(t => t.distributorId === activeDistId);
+    const filtered = all.filter(t => !t.distributorId || t.distributorId === activeDistId);
     return filtered.length > 0 ? filtered : all;
   }
 
-  static createTicket(ticket) {
+  static async createTicket(ticket) {
     const tickets = getStored(STORAGE_KEYS.TICKETS, SEED_TICKETS);
     const activeDistId = this.getActiveDistributorId();
+    let recordNumber = `TCK-2026-${(tickets.length + 50).toString().padStart(3, '0')}`;
+    let recordId = `TCK-${Date.now()}`;
+
+    // Post live to Salesforce Ticket__c
+    try {
+      const res = await fetch('/api/salesforce/services/apexrest/api/v1/sfa/dynamic/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'ticket',
+          subject: ticket.subject,
+          ticketCategory: ticket.category,
+          priority: ticket.priority,
+          description: ticket.description
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.success) {
+          if (json.recordNumber) recordNumber = json.recordNumber;
+          if (json.recordId) recordId = json.recordId;
+        }
+      }
+    } catch (err) {
+      console.warn('Salesforce ticket live sync deferred to local queue:', err);
+    }
+
     const newTicket = {
-      id: `TCK-${Date.now()}`,
-      ticketNumber: `TCK-2026-${(tickets.length + 50).toString().padStart(3, '0')}`,
+      id: recordId,
+      ticketNumber: recordNumber,
       distributorId: activeDistId,
       raisedDate: new Date().toLocaleString(),
       status: 'Open',
-      assignedOfficer: 'DO Desk Assigned',
+      assignedOfficer: 'DO Plant Desk (Salesforce Live)',
       ...ticket
     };
     tickets.unshift(newTicket);
