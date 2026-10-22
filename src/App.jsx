@@ -20,21 +20,34 @@ import {
   Phone,
   Calendar,
   Eye,
-  Truck
+  Truck,
+  LogOut,
+  Clock,
+  Info,
+  CreditCard,
+  MapPin,
+  X
 } from 'lucide-react';
 import { DMSDataService } from './services/api';
+import DistributorLogin from './components/DistributorLogin';
+import { formatIST, getCurrentISTTimestamp } from './utils/dateUtils';
 
 export default function App() {
-  // Navigation Tabs: 6 Core Modules from Script
-  const [activeTab, setActiveTab] = useState('distributor_outlets');
+  // Authentication State
+  const [authenticatedDistributor, setAuthenticatedDistributor] = useState(() =>
+    DMSDataService.getAuthenticatedDistributor()
+  );
+
+  // Navigation Tabs: 6 Core Modules
+  const [activeTab, setActiveTab] = useState('orders');
 
   // Sub-tabs
   const [invSubTab, setInvSubTab] = useState('stock_held');
   const [returnAssetSubTab, setReturnAssetSubTab] = useState('returns');
 
-  // State Collections
-  const [allDistributors, setAllDistributors] = useState(() => DMSDataService.getAllDistributors());
+  // Data Collections (Scoped strictly to authenticated distributor)
   const [distributor, setDistributor] = useState(() => DMSDataService.getDistributor());
+  const [employees, setEmployees] = useState(() => DMSDataService.getEmployees());
   const [outlets, setOutlets] = useState(() => DMSDataService.getRetailerOutlets());
   const [orders, setOrders] = useState(() => DMSDataService.getOrders());
   const [stockHeld, setStockHeld] = useState(() => DMSDataService.getStockHeld());
@@ -50,23 +63,23 @@ export default function App() {
 
   // Search & Filter State
   const [outletSearch, setOutletSearch] = useState('');
-  const [selectedBeatFilter, setSelectedBeatFilter] = useState('All');
   const [selectedTicketFilter, setSelectedTicketFilter] = useState('All');
 
   // Modals
   const [selectedOrderForModal, setSelectedOrderForModal] = useState(null);
   const [showGRNModal, setShowGRNModal] = useState(false);
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Form State: GRN
-  const [grnProduct, setGrnProduct] = useState('Parle-G 100g Glucose Biscuit');
-  const [grnQty, setGrnQty] = useState(200);
-  const [grnBatch, setGrnBatch] = useState('B2610-GRN9');
+  const [grnProduct, setGrnProduct] = useState('Herbal Shampoo 200ml');
+  const [grnQty, setGrnQty] = useState(100);
+  const [grnBatch, setGrnBatch] = useState('B2610-GRN1');
   const [grnExpiry, setGrnExpiry] = useState('2027-04-30');
   const [grnPO, setGrnPO] = useState('PO-2026-9021');
 
-  // Form State: Ticket
-  const [ticketCategory, setTicketCategory] = useState('Product Issue');
+  // Form State: Ticket (Strictly aligned with Salesforce Ticket__c picklists)
+  const [ticketCategory, setTicketCategory] = useState('Damaged Stock');
   const [ticketPriority, setTicketPriority] = useState('High');
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketDesc, setTicketDesc] = useState('');
@@ -74,13 +87,25 @@ export default function App() {
   // Toast / Notification
   const [notification, setNotification] = useState(null);
 
+  // Live IST Clock
+  const [currentISTTime, setCurrentISTTime] = useState(getCurrentISTTimestamp());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentISTTime(getCurrentISTTimestamp());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const triggerToast = (msg) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3500);
   };
 
-  const reloadData = () => {
-    setDistributor(DMSDataService.getDistributor());
+  const reloadData = (dist) => {
+    const currentDist = dist || DMSDataService.getDistributor();
+    setDistributor(currentDist);
+    setEmployees(DMSDataService.getEmployees());
     setOutlets(DMSDataService.getRetailerOutlets());
     setOrders(DMSDataService.getOrders());
     setStockHeld(DMSDataService.getStockHeld());
@@ -95,32 +120,39 @@ export default function App() {
 
   const handleFullSync = async () => {
     await DMSDataService.syncDistributorsFromSalesforce();
+    await DMSDataService.syncEmployeesFromSalesforce();
     await DMSDataService.syncRetailersFromSalesforce();
     await DMSDataService.syncOrdersFromSalesforce();
     await DMSDataService.syncInventoryFromSalesforce();
+    await DMSDataService.syncReturnsFromSalesforce();
+    await DMSDataService.syncAssetsFromSalesforce();
     await DMSDataService.syncTicketsFromSalesforce();
-    setAllDistributors(DMSDataService.getAllDistributors());
     reloadData();
-  };
-
-  const handleDistributorChange = (newDistId) => {
-    DMSDataService.setActiveDistributorId(newDistId);
-    reloadData();
-    const newDist = DMSDataService.getAllDistributors().find(d => d.id === newDistId);
-    triggerToast(`Switched active portal view to: ${newDist?.name || 'Selected Distributor'}`);
   };
 
   useEffect(() => {
-    reloadData();
-    // Synchronize live with Salesforce
-    handleFullSync();
-  }, []);
+    if (authenticatedDistributor) {
+      handleFullSync();
+    }
+  }, [authenticatedDistributor?.id]);
+
+  const handleLoginSuccess = (dist) => {
+    setAuthenticatedDistributor(dist);
+    reloadData(dist);
+    triggerToast(`Welcome back, ${dist.name}! Signed into Distributor Portal.`);
+  };
+
+  const handleLogout = () => {
+    DMSDataService.logout();
+    setAuthenticatedDistributor(null);
+    triggerToast('Logged out successfully.');
+  };
 
   // Handlers
-  const handleOrderStatusUpdate = (orderId, status) => {
-    DMSDataService.updateOrderStatus(orderId, status);
+  const handleOrderStatusUpdate = async (orderId, status) => {
+    await DMSDataService.updateOrderStatus(orderId, status);
     reloadData();
-    triggerToast(`Order status updated to ${status}. Stock movements recorded.`);
+    triggerToast(`Order status updated to "${status}" at ${getCurrentISTTimestamp()}`);
   };
 
   const handleCreateGRN = (e) => {
@@ -135,7 +167,7 @@ export default function App() {
     });
     setShowGRNModal(false);
     reloadData();
-    triggerToast(`GRN Created successfully! Added ${grnQty} units to live stock.`);
+    triggerToast(`GRN created! Received ${grnQty} cases into warehouse stock at ${getCurrentISTTimestamp()}.`);
   };
 
   const handleCreateTicket = async (e) => {
@@ -152,7 +184,7 @@ export default function App() {
     setTicketSubject('');
     setTicketDesc('');
     reloadData();
-    triggerToast('Support ticket raised and synced live to Salesforce Ticket__c!');
+    triggerToast('Support ticket raised and synced directly to Salesforce Ticket__c!');
   };
 
   const handleUpdateTicketStatus = (ticketId, status, notes, reason) => {
@@ -164,7 +196,7 @@ export default function App() {
   const handleApproveReturn = (returnId) => {
     DMSDataService.updateReturnStatus(returnId, 'Approved & Restocked');
     reloadData();
-    triggerToast('Return approved! Salable items restocked & Credit Note generated.');
+    triggerToast('Return approved and credit note logged in IST.');
   };
 
   const handleAssetServiceUpdate = (assetId, status, remarks) => {
@@ -173,17 +205,20 @@ export default function App() {
     triggerToast(`Asset status updated to ${status}`);
   };
 
+  // If user is not authenticated, render login view
+  if (!authenticatedDistributor) {
+    return <DistributorLogin onLoginSuccess={handleLoginSuccess} />;
+  }
+
   // Filtered Outlets
   const filteredOutlets = (outlets || []).filter(o => {
     if (!o) return false;
     const q = (outletSearch || '').toLowerCase();
-    const matchesSearch =
+    return (
       (o.name || '').toLowerCase().includes(q) ||
       (o.shopName || '').toLowerCase().includes(q) ||
-      (o.code || '').toLowerCase().includes(q) ||
-      (o.assignedSRName || '').toLowerCase().includes(q);
-    const matchesBeat = selectedBeatFilter === 'All' || o.beatName === selectedBeatFilter;
-    return matchesSearch && matchesBeat;
+      (o.code || '').toLowerCase().includes(q)
+    );
   });
 
   // Filtered Tickets
@@ -195,8 +230,9 @@ export default function App() {
 
   // Quick Stats
   const totalStockUnits = (stockHeld || []).reduce((acc, s) => acc + (s.availableStock || 0), 0);
-  const totalStockValue = (stockHeld || []).reduce((acc, s) => acc + (s.availableStock || 0) * (s.unitPrice || 25), 0);
-  const pendingOrdersCount = (orders || []).filter(o => o.status === 'Submitted' || o.status === 'Confirmed' || o.status === 'Pending Fulfillment').length;
+  const pendingOrdersCount = (orders || []).filter(
+    o => o.status === 'Submitted' || o.status === 'Confirmed' || o.status === 'Pending Fulfillment'
+  ).length;
   const openTicketsCount = (tickets || []).filter(t => t.status === 'Open' || t.status === 'In Progress').length;
 
   return (
@@ -209,59 +245,74 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Corporate Navbar */}
+      {/* Top Header Navbar */}
       <header className="bg-slate-900 text-white border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center shadow-lg sticky top-0 z-40 gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="bg-blue-600 p-2.5 rounded-xl shadow-md">
+        {/* Left: Authenticated Distributor Brand */}
+        <div className="flex items-center space-x-3.5">
+          <div className="bg-blue-600 p-2.5 rounded-xl shadow-md shrink-0">
             <Building2 className="w-6 h-6 text-white" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold tracking-tight text-white">{distributor.name}</h1>
-              <span className="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-mono">
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">{distributor.name}</h1>
+              <span className="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/40 px-2 py-0.5 rounded-full font-mono">
                 {distributor.code}
               </span>
             </div>
-            <p className="text-xs text-slate-400 flex items-center space-x-2">
+            <p className="text-xs text-slate-400 flex items-center space-x-2 mt-0.5">
               <span>{distributor.area}</span>
               <span>•</span>
-              <span>Primary Depot: {distributor.defaultWarehouseName}</span>
+              <span className="text-slate-300 font-mono">GSTIN: {distributor.gstin}</span>
+              <span>•</span>
+              <span className="text-blue-300">Depot: {distributor.defaultWarehouseName}</span>
             </p>
           </div>
         </div>
 
-        {/* Multi-Distributor Switcher & Live Salesforce SFA Sync Pill */}
+        {/* Right: IST Live Clock, Sync, Profile, Logout */}
         <div className="flex items-center space-x-3 flex-wrap gap-2">
-          {/* Dynamic Switcher */}
-          <div className="flex items-center space-x-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">
-            <span className="text-slate-400 font-medium">Switch Distributor:</span>
-            <select
-              value={distributor.id}
-              onChange={(e) => handleDistributorChange(e.target.value)}
-              className="bg-slate-900 text-white font-semibold text-xs border border-slate-600 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
-            >
-              {allDistributors.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name} ({d.code})
-                </option>
-              ))}
-            </select>
+          {/* Indian Standard Time (IST) Clock */}
+          <div className="flex items-center space-x-2 bg-slate-800 border border-slate-700/80 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300">
+            <Clock className="w-3.5 h-3.5 text-blue-400" />
+            <span>{currentISTTime}</span>
           </div>
 
-          <div className="flex items-center space-x-2 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400">
+          {/* Salesforce Live Synced Indicator */}
+          <div className="flex items-center space-x-2 bg-emerald-950/60 border border-emerald-500/40 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Salesforce Live Synced</span>
+            <span>Salesforce Live</span>
           </div>
 
+          {/* Refresh Button */}
           <button
             onClick={async () => {
               await handleFullSync();
-              triggerToast('Refreshed data directly from Salesforce Cloud!');
+              triggerToast('Refreshed latest data directly from Salesforce!');
             }}
-            className="p-2 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition"
+            className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 hover:text-white transition cursor-pointer"
             title="Refresh DMS Data from Salesforce"
           >
             <RefreshCw className="w-4 h-4" />
+          </button>
+
+          {/* Distributor Profile Modal Button */}
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-200 font-semibold transition cursor-pointer flex items-center space-x-1.5"
+            title="View Distributor Profile & Credit Limit"
+          >
+            <Info className="w-3.5 h-3.5 text-blue-400" />
+            <span>Profile</span>
+          </button>
+
+          {/* Log Out Button */}
+          <button
+            onClick={handleLogout}
+            className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer shadow-sm"
+            title="Log out of distributor portal"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
           </button>
         </div>
       </header>
@@ -269,27 +320,15 @@ export default function App() {
       {/* Primary DMS Module Navigation Tabs */}
       <nav className="bg-white border-b border-slate-200 px-6 py-2 flex space-x-1 overflow-x-auto shadow-sm">
         <button
-          onClick={() => setActiveTab('distributor_outlets')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
-            activeTab === 'distributor_outlets'
-              ? 'bg-blue-50 text-blue-700 shadow-sm'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Distributor & Outlets ({outlets.length})</span>
-        </button>
-
-        <button
           onClick={() => setActiveTab('orders')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition relative ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer relative ${
             activeTab === 'orders'
               ? 'bg-blue-50 text-blue-700 shadow-sm'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <ShoppingCart className="w-4 h-4" />
-          <span>Orders & Mobile Sync</span>
+          <span>Secondary Orders</span>
           {pendingOrdersCount > 0 && (
             <span className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full ml-1">
               {pendingOrdersCount}
@@ -298,32 +337,49 @@ export default function App() {
         </button>
 
         <button
+          onClick={() => setActiveTab('distributor_outlets')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
+            activeTab === 'distributor_outlets'
+              ? 'bg-blue-50 text-blue-700 shadow-sm'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <Store className="w-4 h-4" />
+          <span>Retail Outlets & SR ({outlets.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('inventory')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
             activeTab === 'inventory'
               ? 'bg-blue-50 text-blue-700 shadow-sm'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <Package className="w-4 h-4" />
-          <span>Stock & Inventory (4 Processes)</span>
+          <span>Warehouse Stock & GRN</span>
         </button>
 
         <button
           onClick={() => setActiveTab('tickets')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition relative ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer relative ${
             activeTab === 'tickets'
               ? 'bg-blue-50 text-blue-700 shadow-sm'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <LifeBuoy className="w-4 h-4" />
-          <span>Tickets ({openTicketsCount} Open)</span>
+          <span>Support Tickets</span>
+          {openTicketsCount > 0 && (
+            <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full ml-1">
+              {openTicketsCount}
+            </span>
+          )}
         </button>
 
         <button
           onClick={() => setActiveTab('returns_assets')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
             activeTab === 'returns_assets'
               ? 'bg-blue-50 text-blue-700 shadow-sm'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -335,203 +391,171 @@ export default function App() {
 
         <button
           onClick={() => setActiveTab('reports')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
             activeTab === 'reports'
               ? 'bg-blue-50 text-blue-700 shadow-sm'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <BarChart3 className="w-4 h-4" />
-          <span>Manager Dashboards & Reports</span>
+          <span>Performance & Coverage</span>
         </button>
       </nav>
 
       {/* Main Content Area */}
       <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
         {/* ========================================================= */}
-        {/* MODULE 1: DISTRIBUTOR, SR & OUTLET MANAGEMENT */}
+        {/* MODULE 1: SECONDARY ORDERS & MOBILE SFA INTEGRATION */}
         {/* ========================================================= */}
-        {activeTab === 'distributor_outlets' && (
+        {activeTab === 'orders' && (
           <div className="space-y-6">
-            {/* Header info */}
-            <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-2xl p-6 shadow-md flex flex-wrap justify-between items-center">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-wrap justify-between items-center gap-4">
               <div>
-                <span className="text-blue-300 text-xs font-semibold uppercase tracking-wider">
-                  Distributor Operations
+                <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+                  Mobile SFA Integration • Indian Standard Time
                 </span>
-                <h2 className="text-2xl font-bold mt-1">{distributor?.name || 'Distributor Operations'} — SR & Retail Outlets</h2>
-                <p className="text-sm text-blue-100 max-w-2xl mt-1">
-                  {distributor?.name || 'Distributor'} manages {(distributor?.salesReps || []).length} Sales Representatives (SRs), {(distributor?.beats || []).length} Beat routes, and {(outlets || []).length} assigned retail outlets.
+                <h2 className="text-2xl font-bold text-slate-900 mt-1">Secondary Orders Queue</h2>
+                <p className="text-sm text-slate-500">
+                  Orders booked by field sales executives via SFA mobile application arrive here dynamically.
                 </p>
               </div>
 
-              <div className="flex space-x-4 mt-4 lg:mt-0">
-                <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl text-center border border-white/10">
-                  <span className="text-xs text-blue-200">Total Outlets</span>
-                  <div className="text-2xl font-bold">{(outlets || []).length}</div>
+              <div className="flex items-center space-x-3">
+                <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                  <span className="text-xs text-slate-500 font-medium">Distributor Orders</span>
+                  <div className="text-xl font-bold text-slate-800">{orders.length}</div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl text-center border border-white/10">
-                  <span className="text-xs text-blue-200">Active SRs</span>
-                  <div className="text-2xl font-bold">{(distributor?.salesReps || []).length}</div>
-                </div>
-                <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl text-center border border-white/10">
-                  <span className="text-xs text-blue-200">Total Beats</span>
-                  <div className="text-2xl font-bold">{(distributor?.beats || []).length}</div>
+                <div className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl text-center">
+                  <span className="text-xs text-blue-600 font-medium">Billed Value</span>
+                  <div className="text-xl font-bold text-blue-700">
+                    ₹{orders.reduce((acc, o) => acc + (o.totalAmount || 0), 0).toLocaleString()}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Sales Representatives Cards */}
-            <div>
-              <h3 className="text-md font-bold text-slate-800 flex items-center space-x-2 mb-3">
-                <Users className="w-5 h-5 text-blue-600" />
-                <span>Assigned Sales Representatives (SRs)</span>
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(distributor?.salesReps || []).map(sr => (
-                  <div key={sr.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-blue-400 transition">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-11 h-11 bg-blue-100 text-blue-700 font-bold rounded-full flex items-center justify-center text-lg">
-                          {(sr.name || 'SR').split(' ').filter(Boolean).map(n => n[0]).join('')}
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-slate-900">{sr.name}</h4>
-                          <span className="text-xs text-slate-500 font-mono">{sr.code} • {sr.phone}</span>
-                        </div>
-                      </div>
-                      <span className="text-xs px-2.5 py-1 bg-emerald-100 text-emerald-800 font-semibold rounded-full">
-                        {sr.status || 'Active'}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100 text-center">
-                      <div className="bg-slate-50 p-2 rounded-lg">
-                        <span className="text-xs text-slate-500 block">Outlets</span>
-                        <span className="font-bold text-slate-800">{sr.totalAssignedOutlets || (outlets || []).length} Outlets</span>
-                      </div>
-                      <div className="bg-slate-50 p-2 rounded-lg">
-                        <span className="text-xs text-slate-500 block">Target Achieved</span>
-                        <span className="font-bold text-emerald-600">
-                          {sr.monthlyTarget ? Math.round(((sr.achievedAmount || 0) / sr.monthlyTarget) * 100) : 85}%
-                        </span>
-                      </div>
-                      <div className="bg-slate-50 p-2 rounded-lg">
-                        <span className="text-xs text-slate-500 block">Strike Rate</span>
-                        <span className="font-bold text-blue-600">{sr.strikeRate || 85}%</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 text-xs text-slate-600">
-                      <span className="font-semibold text-slate-700">Assigned Beats: </span>
-                      {Array.isArray(sr.assignedBeats) && sr.assignedBeats.length > 0
-                        ? sr.assignedBeats.join(' • ')
-                        : (distributor?.beats || []).map(b => b.name).join(' • ') || 'Main Beat Route'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 70 Retail Outlets Management */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
-                <div>
-                  <h3 className="font-bold text-slate-900 flex items-center space-x-2">
-                    <Store className="w-5 h-5 text-blue-600" />
-                    <span>Retail Outlets Network (Showing {filteredOutlets.length} of {outlets.length})</span>
-                  </h3>
-                  <p className="text-xs text-slate-500">Retail shops assigned to {distributor.name} where SR takes orders using SFA mobile</p>
-                </div>
-
-                <div className="flex items-center space-x-3 w-full sm:w-auto">
-                  <div className="relative flex-1 sm:w-64">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                    <input
-                      type="text"
-                      placeholder="Search Balaji, Gupta, code..."
-                      value={outletSearch}
-                      onChange={e => setOutletSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <select
-                    value={selectedBeatFilter}
-                    onChange={e => setSelectedBeatFilter(e.target.value)}
-                    className="text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="All">All Beats</option>
-                    {(distributor?.beats || []).map(b => (
-                      <option key={b.id} value={b.name}>{b.name}</option>
-                    ))}
-                  </select>
-                </div>
+            {/* Orders Table */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+                <h3 className="font-bold text-slate-900 flex items-center space-x-2">
+                  <ShoppingCart className="w-5 h-5 text-blue-600" />
+                  <span>Incoming Retail Bookings ({orders.length})</span>
+                </h3>
+                <span className="text-xs text-slate-500 font-mono">Territory: {distributor.area}</span>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-700">
-                  <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3">Outlet Code & Name</th>
-                      <th className="px-4 py-3">Shop & Owner Details</th>
-                      <th className="px-4 py-3">Beat / Route</th>
-                      <th className="px-4 py-3">Assigned SR</th>
-                      <th className="px-4 py-3">Credit Limit / Balance</th>
-                      <th className="px-4 py-3">Last Order</th>
-                      <th className="px-4 py-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredOutlets.slice(0, 15).map(outlet => (
-                      <tr key={outlet.id} className="hover:bg-slate-50/80 transition">
-                        <td className="px-4 py-3">
-                          <div className="font-bold text-slate-900">{outlet.name}</div>
-                          <span className="text-xs font-mono text-slate-500">{outlet.code}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="text-slate-800">{outlet.shopName}</div>
-                          <div className="text-xs text-slate-500 flex items-center space-x-1">
-                            <Phone className="w-3 h-3" />
-                            <span>{outlet.ownerPhone}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-xs font-medium text-slate-700">
-                          {outlet.beatName}
-                        </td>
-                        <td className="px-4 py-3 text-xs font-semibold text-blue-700">
-                          {outlet.assignedSRName}
-                        </td>
-                        <td className="px-4 py-3 text-xs">
-                          <div>Limit: ₹{outlet.creditLimit.toLocaleString()}</div>
-                          <div className={outlet.creditHold ? 'text-red-600 font-bold' : 'text-slate-600'}>
-                            Due: ₹{outlet.outstandingBalance.toLocaleString()}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-slate-600">
-                          {outlet.lastOrderDate}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-                              outlet.status === 'Active Buyer'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {outlet.status}
-                          </span>
-                        </td>
+              {orders.length === 0 ? (
+                <div className="p-12 text-center bg-white">
+                  <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <h4 className="text-base font-bold text-slate-800">No Orders for {distributor.name}</h4>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                    There are currently no secondary orders booked for this distributor. When field sales representatives book orders on SFA mobile, they will arrive here automatically in Indian Standard Time (IST).
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-700">
+                    <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3">Order Number & Booking Date (IST)</th>
+                        <th className="px-4 py-3">Retail Outlet</th>
+                        <th className="px-4 py-3">Sales Executive</th>
+                        <th className="px-4 py-3">Order Total</th>
+                        <th className="px-4 py-3">Fulfillment Status</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {orders.map(order => {
+                        const getStatusBadge = () => {
+                          switch (order.status) {
+                            case 'Submitted':
+                              return 'bg-blue-100 text-blue-800 border-blue-200';
+                            case 'Confirmed':
+                              return 'bg-amber-100 text-amber-800 border-amber-200';
+                            case 'Dispatched':
+                              return 'bg-purple-100 text-purple-800 border-purple-200';
+                            case 'Delivered':
+                              return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                            default:
+                              return 'bg-slate-100 text-slate-800 border-slate-200';
+                          }
+                        };
 
-              {filteredOutlets.length > 15 && (
-                <div className="p-3 bg-slate-50 border-t border-slate-200 text-center text-xs text-slate-500">
-                  Showing first 15 of {filteredOutlets.length} retail outlets. Use search or beat filter to locate specific stores.
+                        return (
+                          <tr key={order.id} className="hover:bg-slate-50 transition">
+                            <td className="px-4 py-3">
+                              <div className="font-bold text-slate-900 font-mono">{order.orderNumber}</div>
+                              <div className="text-xs text-slate-500 flex items-center space-x-1 mt-0.5">
+                                <Calendar className="w-3 h-3 text-slate-400" />
+                                <span>{order.orderDate}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-slate-900">{order.retailerName}</div>
+                              <span className="text-xs text-slate-500">{order.retailerShopName}</span>
+                            </td>
+                            <td className="px-4 py-3 text-xs font-semibold text-blue-700">
+                              {order.salesExecutiveName}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-bold text-slate-900">₹{(order.totalAmount || 0).toLocaleString()}</div>
+                              <div className="text-xs text-slate-500">{order.items?.length || 0} line items</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${getStatusBadge()}`}>
+                                {order.status}
+                              </span>
+                              {order.dispatchDate && (
+                                <div className="text-[10px] text-slate-500 mt-1">
+                                  Dispatched: {order.dispatchDate}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right space-x-2">
+                              {order.items && order.items.length > 0 && (
+                                <button
+                                  onClick={() => setSelectedOrderForModal(order)}
+                                  className="px-2.5 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium inline-flex items-center space-x-1 cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Items</span>
+                                </button>
+                              )}
+
+                              {order.status === 'Submitted' && (
+                                <button
+                                  onClick={() => handleOrderStatusUpdate(order.id, 'Confirmed')}
+                                  className="px-2.5 py-1 text-xs bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium cursor-pointer"
+                                >
+                                  Confirm
+                                </button>
+                              )}
+
+                              {order.status === 'Confirmed' && (
+                                <button
+                                  onClick={() => handleOrderStatusUpdate(order.id, 'Dispatched')}
+                                  className="px-2.5 py-1 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium inline-flex items-center space-x-1 cursor-pointer"
+                                >
+                                  <Truck className="w-3.5 h-3.5" />
+                                  <span>Dispatch (Stock Out)</span>
+                                </button>
+                              )}
+
+                              {order.status === 'Dispatched' && (
+                                <button
+                                  onClick={() => handleOrderStatusUpdate(order.id, 'Delivered')}
+                                  className="px-2.5 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium cursor-pointer"
+                                >
+                                  Delivered
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -539,468 +563,342 @@ export default function App() {
         )}
 
         {/* ========================================================= */}
-        {/* MODULE 2: ORDER MANAGEMENT & SYNCHRONIZATION */}
+        {/* MODULE 2: RETAIL OUTLETS & SALES REPRESENTATIVES */}
         {/* ========================================================= */}
-        {activeTab === 'orders' && (
+        {activeTab === 'distributor_outlets' && (
           <div className="space-y-6">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-wrap justify-between items-center gap-4">
+            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-6 shadow-md flex flex-wrap justify-between items-center gap-4">
               <div>
-                <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-                  Mobile SFA Integration
+                <span className="text-blue-300 text-xs font-semibold uppercase tracking-wider">
+                  Territory Operations
                 </span>
-                <h2 className="text-2xl font-bold text-slate-900 mt-1">Order Management & Sync</h2>
-                <p className="text-sm text-slate-500">
-                  Orders submitted by Sales Representatives (SRs) in the SFA mobile application synchronize automatically here and into Salesforce.
+                <h2 className="text-2xl font-bold mt-1">{distributor.name} — Retail Network</h2>
+                <p className="text-sm text-blue-100 max-w-2xl mt-1">
+                  Verified retail counters mapped to {distributor.name} in Salesforce.
                 </p>
               </div>
 
-              <div className="flex items-center space-x-3">
-                <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                  <span className="text-xs text-slate-500">Total Orders</span>
-                  <div className="text-xl font-bold text-slate-800">{orders.length}</div>
+              <div className="flex space-x-4">
+                <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl text-center border border-white/10">
+                  <span className="text-xs text-blue-200">Mapped Outlets</span>
+                  <div className="text-2xl font-bold">{outlets.length}</div>
                 </div>
-                <div className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl text-center">
-                  <span className="text-xs text-blue-600">Order Value</span>
-                  <div className="text-xl font-bold text-blue-700">
-                    ₹{orders.reduce((acc, o) => acc + o.totalAmount, 0).toLocaleString()}
+                <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl text-center border border-white/10">
+                  <span className="text-xs text-blue-200">Active Buyers</span>
+                  <div className="text-2xl font-bold">
+                    {outlets.filter(o => o.status === 'Active Buyer').length}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Orders Table */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-slate-200 flex justify-between items-center">
-                <h3 className="font-bold text-slate-900 flex items-center space-x-2">
-                  <ShoppingCart className="w-5 h-5 text-blue-600" />
-                  <span>SFA Incoming Orders</span>
-                </h3>
-                <span className="text-xs text-slate-500 font-mono">DMS Order Dispatch Desk</span>
+            {/* Real Salesforce Sales Representatives */}
+            <div>
+              <h3 className="text-md font-bold text-slate-800 flex items-center space-x-2 mb-3">
+                <Users className="w-5 h-5 text-blue-600" />
+                <span>Sales Executives (Salesforce Live)</span>
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {employees.map(emp => (
+                  <div key={emp.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-blue-100 text-blue-700 font-bold rounded-full flex items-center justify-center text-sm">
+                        {emp.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">{emp.name}</h4>
+                        <span className="text-xs text-slate-500 font-mono">{emp.code} • {emp.designation}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Retail Outlets Table */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
+                <div>
+                  <h3 className="font-bold text-slate-900 flex items-center space-x-2">
+                    <Store className="w-5 h-5 text-blue-600" />
+                    <span>Retail Outlets Network ({filteredOutlets.length})</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">Retail counters supplied by {distributor.name}</p>
+                </div>
+
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Search outlet or code..."
+                    value={outletSearch}
+                    onChange={e => setOutletSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-700">
-                  <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3">Order # & Date</th>
-                      <th className="px-4 py-3">Retail Outlet</th>
-                      <th className="px-4 py-3">Sales Rep (SR)</th>
-                      <th className="px-4 py-3">Total Amount</th>
-                      <th className="px-4 py-3">Status Progression</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {orders.map(order => {
-                      const getStatusBadge = () => {
-                        switch (order.status) {
-                          case 'Submitted':
-                            return 'bg-blue-100 text-blue-800 border-blue-200';
-                          case 'Confirmed':
-                            return 'bg-amber-100 text-amber-800 border-amber-200';
-                          case 'Dispatched':
-                            return 'bg-purple-100 text-purple-800 border-purple-200';
-                          case 'Delivered':
-                            return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-                          default:
-                            return 'bg-slate-100 text-slate-800 border-slate-200';
-                        }
-                      };
-
-                      return (
-                        <tr key={order.id} className="hover:bg-slate-50 transition">
+              {filteredOutlets.length === 0 ? (
+                <div className="p-12 text-center bg-white">
+                  <Store className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <h4 className="text-base font-bold text-slate-800">No Retail Outlets Mapped</h4>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                    No retail outlets are assigned to {distributor.name} in Salesforce. When retailers are linked to this distributor, they will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-700">
+                    <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3">Outlet Code & Name</th>
+                        <th className="px-4 py-3">Shop & Contact</th>
+                        <th className="px-4 py-3">Credit Limit / Balance</th>
+                        <th className="px-4 py-3">Verification</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredOutlets.map(outlet => (
+                        <tr key={outlet.id} className="hover:bg-slate-50 transition">
                           <td className="px-4 py-3">
-                            <div className="font-bold text-slate-900 font-mono">{order.orderNumber}</div>
+                            <div className="font-bold text-slate-900">{outlet.name}</div>
+                            <span className="text-xs font-mono text-slate-500">{outlet.code}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="text-slate-800">{outlet.shopName}</div>
                             <div className="text-xs text-slate-500 flex items-center space-x-1">
-                              <Calendar className="w-3 h-3" />
-                              <span>{order.orderDate}</span>
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              <span>{outlet.ownerPhone}</span>
                             </div>
-                            <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
-                              {order.source}
-                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs">
+                            <div>Limit: ₹{outlet.creditLimit.toLocaleString()}</div>
+                            <div className={outlet.creditHold ? 'text-red-600 font-bold' : 'text-slate-600'}>
+                              Due: ₹{outlet.outstandingBalance.toLocaleString()}
+                            </div>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="font-semibold text-slate-900">{order.retailerName}</div>
-                            <span className="text-xs text-slate-500 font-mono">{order.retailerCode}</span>
-                          </td>
-                          <td className="px-4 py-3 text-xs font-semibold text-blue-700">
-                            {order.salesRepName}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="font-bold text-slate-900">₹{order.totalAmount.toLocaleString()}</div>
-                            <div className="text-xs text-slate-500">{order.totalUnits} Units ({order.items.length} SKUs)</div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${getStatusBadge()}`}>
-                              {order.status}
-                            </span>
-                            {order.dispatchDate && (
-                              <div className="text-[10px] text-slate-500 mt-1">
-                                Dispatched: {order.dispatchDate}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right space-x-2">
-                            <button
-                              onClick={() => setSelectedOrderForModal(order)}
-                              className="px-2.5 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium inline-flex items-center space-x-1"
+                            <span
+                              className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                                outlet.status === 'Active Buyer'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>Items</span>
-                            </button>
-
-                            {order.status === 'Submitted' && (
-                              <button
-                                onClick={() => handleOrderStatusUpdate(order.id, 'Confirmed')}
-                                className="px-2.5 py-1 text-xs bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium"
-                              >
-                                Confirm
-                              </button>
-                            )}
-
-                            {order.status === 'Confirmed' && (
-                              <button
-                                onClick={() => handleOrderStatusUpdate(order.id, 'Dispatched')}
-                                className="px-2.5 py-1 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium inline-flex items-center space-x-1"
-                              >
-                                <Truck className="w-3.5 h-3.5" />
-                                <span>Dispatch (Stock Out)</span>
-                              </button>
-                            )}
-
-                            {order.status === 'Dispatched' && (
-                              <button
-                                onClick={() => handleOrderStatusUpdate(order.id, 'Delivered')}
-                                className="px-2.5 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium"
-                              >
-                                Delivered
-                              </button>
-                            )}
+                              {outlet.status}
+                            </span>
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* ========================================================= */}
-        {/* MODULE 3: STOCK & INVENTORY MANAGEMENT (4 PROCESSES) */}
+        {/* MODULE 3: WAREHOUSE STOCK & GRN (4 PROCESSES) */}
         {/* ========================================================= */}
         {activeTab === 'inventory' && (
           <div className="space-y-6">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-wrap justify-between items-center gap-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-wrap justify-between items-center gap-4">
               <div>
                 <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-                  Module 2 Reference
+                  Depot Warehouse Operations
                 </span>
-                <h2 className="text-2xl font-bold text-slate-900 mt-1">Stock and Inventory Management</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mt-1">Warehouse Stock & GRN</h2>
                 <p className="text-sm text-slate-500">
-                  Strictly follows the 4 Core Processes: Stock In (GRN) ➔ Stock Held (Live Stock) ➔ Stock Out (Sales) ➔ Closing Stock & Reports.
+                  Depot: <strong>{distributor.defaultWarehouseName}</strong> • Managed in Indian Standard Time (IST).
                 </p>
               </div>
 
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowGRNModal(true)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm flex items-center space-x-2 transition"
-                >
-                  <ArrowDownToLine className="w-4 h-4" />
-                  <span>Receive Stock (Create GRN)</span>
-                </button>
-              </div>
+              <button
+                onClick={() => setShowGRNModal(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm flex items-center space-x-2 transition cursor-pointer"
+              >
+                <ArrowDownToLine className="w-4 h-4" />
+                <span>Receive Primary Stock (GRN)</span>
+              </button>
             </div>
 
-            {/* Inventory 4 Processes Sub-tab Switcher */}
+            {/* Inventory 4 Processes Switcher */}
             <div className="flex border-b border-slate-200 bg-white rounded-t-xl px-4 pt-3 space-x-2">
               <button
                 onClick={() => setInvSubTab('stock_held')}
-                className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center space-x-2 ${
+                className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition cursor-pointer flex items-center space-x-2 ${
                   invSubTab === 'stock_held'
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
                 <Package className="w-4 h-4" />
-                <span>2. Stock Held (Live Stock)</span>
-              </button>
-
-              <button
-                onClick={() => setInvSubTab('stock_in')}
-                className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center space-x-2 ${
-                  invSubTab === 'stock_in'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <ArrowDownToLine className="w-4 h-4" />
-                <span>1. Stock In (GRN Receipts)</span>
-              </button>
-
-              <button
-                onClick={() => setInvSubTab('stock_out')}
-                className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center space-x-2 ${
-                  invSubTab === 'stock_out'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <ArrowUpFromLine className="w-4 h-4" />
-                <span>3. Stock Out (Sales to Shops)</span>
+                <span>Live Warehouse Stock ({stockHeld.length})</span>
               </button>
 
               <button
                 onClick={() => setInvSubTab('ledger')}
-                className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition flex items-center space-x-2 ${
+                className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition cursor-pointer flex items-center space-x-2 ${
                   invSubTab === 'ledger'
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
                 <FileText className="w-4 h-4" />
-                <span>4. Closing Stock & Movement Ledger</span>
+                <span>Movement Ledger & GRN Logs</span>
               </button>
             </div>
 
-            {/* Sub-tab 1: Stock Held (Live Stock) */}
+            {/* Live Stock Held */}
             {invSubTab === 'stock_held' && (
               <div className="bg-white border border-slate-200 rounded-b-xl shadow-sm overflow-hidden p-4 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                    <span className="text-xs text-blue-600 font-semibold">Total Stock on Hand</span>
-                    <div className="text-2xl font-bold text-blue-900">{totalStockUnits.toLocaleString()} Units</div>
-                  </div>
-                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
-                    <span className="text-xs text-emerald-600 font-semibold">Warehouse Valuation</span>
-                    <div className="text-2xl font-bold text-emerald-900">₹{totalStockValue.toLocaleString()}</div>
+                    <span className="text-xs text-blue-600 font-semibold">Available Stock</span>
+                    <div className="text-2xl font-bold text-blue-900">{totalStockUnits.toLocaleString()} Cases</div>
                   </div>
                   <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
                     <span className="text-xs text-amber-600 font-semibold">Reserved for Orders</span>
                     <div className="text-2xl font-bold text-amber-900">
-                      {stockHeld.reduce((a, s) => a + s.reservedStock, 0)} Units
+                      {stockHeld.reduce((a, s) => a + (s.reservedStock || 0), 0)} Cases
                     </div>
                   </div>
-                  <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl">
-                    <span className="text-xs text-rose-600 font-semibold">Near Expiry / Alerts</span>
-                    <div className="text-2xl font-bold text-rose-900">
-                      {stockHeld.filter(s => s.status === 'Near Expiry' || s.status === 'Low Stock').length} SKUs
+                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+                    <span className="text-xs text-emerald-600 font-semibold">Physical On-Hand</span>
+                    <div className="text-2xl font-bold text-emerald-900">
+                      {stockHeld.reduce((a, s) => a + (s.physicalStock || 0), 0)} Cases
                     </div>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-700">
-                    <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
-                      <tr>
-                        <th className="px-4 py-3">Product Name & Code</th>
-                        <th className="px-4 py-3">Category</th>
-                        <th className="px-4 py-3">Physical Stock</th>
-                        <th className="px-4 py-3">Reserved</th>
-                        <th className="px-4 py-3">Available Stock</th>
-                        <th className="px-4 py-3">Batch & Expiry</th>
-                        <th className="px-4 py-3">Velocity & Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {stockHeld.map(item => (
-                        <tr key={item.id} className="hover:bg-slate-50 transition">
-                          <td className="px-4 py-3 font-semibold text-slate-900">
-                            <div>{item.productName}</div>
-                            <span className="text-xs text-slate-400 font-mono">{item.productCode}</span>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-slate-600">{item.category}</td>
-                          <td className="px-4 py-3 font-bold text-slate-800">{item.physicalStock}</td>
-                          <td className="px-4 py-3 text-amber-600 font-semibold">{item.reservedStock}</td>
-                          <td className="px-4 py-3 font-bold text-emerald-600 text-base">
-                            {item.availableStock}
-                          </td>
-                          <td className="px-4 py-3 text-xs">
-                            <div className="font-mono">{item.batchNo}</div>
-                            <div className={item.daysToExpiry < 60 ? 'text-rose-600 font-bold' : 'text-slate-500'}>
-                              Exp: {item.expiryDate} ({item.daysToExpiry}d left)
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
-                                item.status === 'In Stock'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : item.status === 'Low Stock'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-rose-100 text-rose-800'
-                              }`}
-                            >
-                              {item.status}
-                            </span>
-                            <div className="text-[10px] text-slate-400 mt-0.5">{item.velocity}</div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Sub-tab 2: Stock In (GRN Receipts) */}
-            {invSubTab === 'stock_in' && (
-              <div className="bg-white border border-slate-200 rounded-b-xl shadow-sm p-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">1. Stock In — Goods Received Note (GRN)</h3>
-                    <p className="text-xs text-slate-500">
-                      When primary orders arrive from company plant, goods are received, verified and added to live stock.
+                {stockHeld.length === 0 ? (
+                  <div className="p-12 text-center bg-white">
+                    <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <h4 className="text-base font-bold text-slate-800">Warehouse Stock Empty</h4>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                      No stock records found for {distributor.name}'s warehouse in Salesforce. Click "Receive Primary Stock (GRN)" to log arriving shipments.
                     </p>
                   </div>
-                  <button
-                    onClick={() => setShowGRNModal(true)}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm"
-                  >
-                    + Enter New GRN
-                  </button>
-                </div>
-
-                <div className="divide-y divide-slate-100">
-                  {stockMovements.filter(m => m.type === 'STOCK_IN_GRN').map(m => (
-                    <div key={m.id} className="py-4 flex justify-between items-center">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                          <ArrowDownToLine className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900">{m.referenceNumber} • {m.productName}</div>
-                          <div className="text-xs text-slate-500">
-                            Batch: <span className="font-mono">{m.batchNo}</span> • Source: {m.entityName}
-                          </div>
-                          <div className="text-xs text-slate-400">{m.notes}</div>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="text-emerald-600 font-bold text-base">+{m.quantityDelta} Units</span>
-                        <div className="text-xs text-slate-400">{m.movementDate}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-slate-700">
+                      <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+                        <tr>
+                          <th className="px-4 py-3">Product Name & SKU</th>
+                          <th className="px-4 py-3">Warehouse Depot</th>
+                          <th className="px-4 py-3">Physical Stock</th>
+                          <th className="px-4 py-3">Reserved</th>
+                          <th className="px-4 py-3">Available Stock</th>
+                          <th className="px-4 py-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {stockHeld.map(item => (
+                          <tr key={item.id} className="hover:bg-slate-50 transition">
+                            <td className="px-4 py-3 font-semibold text-slate-900">
+                              <div>{item.productName}</div>
+                              <span className="text-xs text-slate-400 font-mono">{item.productCode}</span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-slate-600">{item.warehouseName}</td>
+                            <td className="px-4 py-3 font-bold text-slate-800">{item.physicalStock}</td>
+                            <td className="px-4 py-3 text-amber-600 font-semibold">{item.reservedStock}</td>
+                            <td className="px-4 py-3 font-bold text-emerald-600 text-base">
+                              {item.availableStock}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
+                                  item.status === 'In Stock'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}
+                              >
+                                {item.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Sub-tab 3: Stock Out (Sales to Shops) */}
-            {invSubTab === 'stock_out' && (
-              <div className="bg-white border border-slate-200 rounded-b-xl shadow-sm p-6 space-y-4">
-                <h3 className="text-lg font-bold text-slate-900">3. Stock Out — Sales to Retail Shops</h3>
-                <p className="text-xs text-slate-500">
-                  When goods are dispatched to retail outlets against secondary invoices, stock is automatically deducted.
-                </p>
-
-                <div className="divide-y divide-slate-100">
-                  {stockMovements.filter(m => m.type === 'STOCK_OUT_SALE').map(m => (
-                    <div key={m.id} className="py-4 flex justify-between items-center">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
-                          <ArrowUpFromLine className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900">{m.referenceNumber} • {m.productName}</div>
-                          <div className="text-xs text-slate-500">
-                            Delivered to: <span className="font-semibold text-slate-700">{m.entityName}</span>
-                          </div>
-                          <div className="text-xs text-slate-400">{m.notes}</div>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="text-purple-600 font-bold text-base">{m.quantityDelta} Units</span>
-                        <div className="text-xs text-slate-400">{m.movementDate}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Sub-tab 4: Closing Stock & Movement Ledger */}
+            {/* Movement Ledger */}
             {invSubTab === 'ledger' && (
               <div className="bg-white border border-slate-200 rounded-b-xl shadow-sm p-6 space-y-4">
-                <h3 className="text-lg font-bold text-slate-900">4. Closing Stock & Movement Audit Ledger</h3>
-                <p className="text-xs text-slate-500">
-                  Maintains complete stock movement history: receipts, dispatches, returns, and closing balance calculation.
-                </p>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-700">
-                    <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
-                      <tr>
-                        <th className="px-4 py-3">Date & Time</th>
-                        <th className="px-4 py-3">Movement Type</th>
-                        <th className="px-4 py-3">Reference #</th>
-                        <th className="px-4 py-3">Product Name</th>
-                        <th className="px-4 py-3">Quantity Delta</th>
-                        <th className="px-4 py-3">Closing Stock Balance</th>
-                        <th className="px-4 py-3">Entity / Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {stockMovements.map(m => (
-                        <tr key={m.id} className="hover:bg-slate-50 transition">
-                          <td className="px-4 py-3 text-xs text-slate-500">{m.movementDate}</td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                                m.type === 'STOCK_IN_GRN'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : m.type === 'STOCK_OUT_SALE'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}
-                            >
-                              {m.type}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 font-mono text-xs font-semibold">{m.referenceNumber}</td>
-                          <td className="px-4 py-3 font-medium text-slate-900">{m.productName}</td>
-                          <td
-                            className={`px-4 py-3 font-bold ${
-                              m.quantityDelta > 0 ? 'text-emerald-600' : 'text-purple-600'
-                            }`}
-                          >
-                            {m.quantityDelta > 0 ? `+${m.quantityDelta}` : m.quantityDelta}
-                          </td>
-                          <td className="px-4 py-3 font-bold text-slate-800">{m.resultingStock} Units</td>
-                          <td className="px-4 py-3 text-xs text-slate-500">{m.notes}</td>
+                <h3 className="font-bold text-slate-900">Stock Movement Audit Ledger (Indian Standard Time)</h3>
+                {stockMovements.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 text-xs">
+                    No movement records yet. Creating GRN or dispatching orders will generate timestamped audit entries.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-slate-700">
+                      <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+                        <tr>
+                          <th className="px-4 py-3">Date & Time (IST)</th>
+                          <th className="px-4 py-3">Type</th>
+                          <th className="px-4 py-3">Reference #</th>
+                          <th className="px-4 py-3">Product Name</th>
+                          <th className="px-4 py-3">Quantity Delta</th>
+                          <th className="px-4 py-3">Resulting Stock</th>
+                          <th className="px-4 py-3">Notes</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {stockMovements.map(m => (
+                          <tr key={m.id} className="hover:bg-slate-50 transition">
+                            <td className="px-4 py-3 text-xs text-slate-500">{m.movementDate}</td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                                  m.type === 'STOCK_IN_GRN'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-purple-100 text-purple-800'
+                                }`}
+                              >
+                                {m.type}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs font-semibold">{m.referenceNumber}</td>
+                            <td className="px-4 py-3 font-medium text-slate-900">{m.productName}</td>
+                            <td className="px-4 py-3 font-bold text-emerald-600">+{m.quantityDelta}</td>
+                            <td className="px-4 py-3 font-bold text-slate-800">{m.resultingStock}</td>
+                            <td className="px-4 py-3 text-xs text-slate-500">{m.notes}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
         {/* ========================================================= */}
-        {/* MODULE 4: TICKET MANAGEMENT */}
+        {/* MODULE 4: SUPPORT TICKETS (Connected to Salesforce Ticket__c) */}
         {/* ========================================================= */}
         {activeTab === 'tickets' && (
           <div className="space-y-6">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-wrap justify-between items-center gap-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-wrap justify-between items-center gap-4">
               <div>
                 <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-                  Distributor Officer & Admin Support
+                  Connected with Salesforce Ticket__c
                 </span>
-                <h2 className="text-2xl font-bold text-slate-900 mt-1">Ticket Management</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mt-1">Distributor Support Tickets</h2>
                 <p className="text-sm text-slate-500">
-                  Raise and resolve issues across Product, Portal, and Delivery with the 4 statuses: Open, In Progress, Closed, Rejected.
+                  Raise damage, delivery delay, and billing issues directly into Salesforce.
                 </p>
               </div>
 
               <button
                 onClick={() => setShowNewTicketModal(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm flex items-center space-x-2"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm flex items-center space-x-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Raise New Ticket</span>
@@ -1009,11 +907,11 @@ export default function App() {
 
             {/* Filter Tabs */}
             <div className="flex border-b border-slate-200 space-x-2">
-              {['All', 'Open', 'In Progress', 'Closed', 'Rejected'].map(status => (
+              {['All', 'Open', 'In Progress', 'Closed'].map(status => (
                 <button
                   key={status}
                   onClick={() => setSelectedTicketFilter(status)}
-                  className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${
+                  className={`px-4 py-2 text-sm font-semibold border-b-2 transition cursor-pointer ${
                     selectedTicketFilter === status
                       ? 'border-blue-600 text-blue-600'
                       : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -1024,30 +922,24 @@ export default function App() {
               ))}
             </div>
 
-            {/* Tickets Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredTickets.map(ticket => {
-                const getStatusPill = () => {
-                  switch (ticket.status) {
-                    case 'Open':
-                      return 'bg-blue-100 text-blue-800 border-blue-200';
-                    case 'In Progress':
-                      return 'bg-amber-100 text-amber-800 border-amber-200';
-                    case 'Closed':
-                      return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-                    case 'Rejected':
-                      return 'bg-rose-100 text-rose-800 border-rose-200';
-                  }
-                };
-
-                return (
+            {filteredTickets.length === 0 ? (
+              <div className="p-12 text-center bg-white rounded-2xl border border-slate-200">
+                <LifeBuoy className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <h4 className="text-base font-bold text-slate-800">No Tickets Found</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                  No support tickets match the selected status. Click "Raise New Ticket" to report any stock damage or dispatch delay directly to Salesforce.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredTickets.map(ticket => (
                   <div key={ticket.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="text-xs font-mono text-slate-400">{ticket.ticketNumber}</span>
                         <h4 className="font-bold text-slate-900 mt-0.5">{ticket.subject}</h4>
                       </div>
-                      <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${getStatusPill()}`}>
+                      <span className="text-xs px-2.5 py-0.5 rounded-full font-bold border bg-blue-100 text-blue-800 border-blue-200">
                         {ticket.status}
                       </span>
                     </div>
@@ -1057,97 +949,58 @@ export default function App() {
                     <div className="text-xs text-slate-500 flex flex-wrap gap-2 pt-2 border-t border-slate-100">
                       <span className="bg-slate-100 px-2 py-0.5 rounded font-medium">Category: {ticket.category}</span>
                       <span className="bg-slate-100 px-2 py-0.5 rounded font-medium">Priority: {ticket.priority}</span>
-                      <span className="bg-slate-100 px-2 py-0.5 rounded font-medium">Raised: {ticket.raisedDate}</span>
+                      <span className="bg-slate-100 px-2 py-0.5 rounded font-medium">Date (IST): {ticket.raisedDate}</span>
                     </div>
 
-                    {ticket.assignedOfficer && (
-                      <div className="text-xs text-blue-700 font-medium">
-                        DO Officer: {ticket.assignedOfficer}
-                      </div>
-                    )}
+                    <div className="text-xs text-blue-700 font-medium">
+                      Assigned: {ticket.assignedOfficer}
+                    </div>
 
-                    {ticket.resolutionNotes && (
-                      <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-lg text-xs text-emerald-900">
-                        <span className="font-bold block">Resolution:</span>
-                        {ticket.resolutionNotes}
-                      </div>
-                    )}
-
-                    {ticket.rejectionReason && (
-                      <div className="bg-rose-50 border border-rose-200 p-2.5 rounded-lg text-xs text-rose-900">
-                        <span className="font-bold block">Rejection Reason:</span>
-                        {ticket.rejectionReason}
-                      </div>
-                    )}
-
-                    {/* Action Dropdown / Controls */}
                     <div className="pt-2 flex justify-end space-x-2">
                       {ticket.status === 'Open' && (
                         <button
                           onClick={() => handleUpdateTicketStatus(ticket.id, 'In Progress')}
-                          className="px-2.5 py-1 text-xs bg-amber-600 text-white rounded font-medium"
+                          className="px-2.5 py-1 text-xs bg-amber-600 text-white rounded font-medium cursor-pointer"
                         >
                           Mark In Progress
                         </button>
                       )}
-
                       {ticket.status === 'In Progress' && (
-                        <>
-                          <button
-                            onClick={() =>
-                              handleUpdateTicketStatus(
-                                ticket.id,
-                                'Closed',
-                                'Issue investigated and credit/delivery adjustment confirmed by DO.'
-                              )
-                            }
-                            className="px-2.5 py-1 text-xs bg-emerald-600 text-white rounded font-medium"
-                          >
-                            Resolve / Close
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleUpdateTicketStatus(
-                                ticket.id,
-                                'Rejected',
-                                undefined,
-                                'Claims outside standard return/service policy parameters.'
-                              )
-                            }
-                            className="px-2.5 py-1 text-xs bg-rose-600 text-white rounded font-medium"
-                          >
-                            Reject
-                          </button>
-                        </>
+                        <button
+                          onClick={() => handleUpdateTicketStatus(ticket.id, 'Closed', 'Issue resolved by DO Desk.')}
+                          className="px-2.5 py-1 text-xs bg-emerald-600 text-white rounded font-medium cursor-pointer"
+                        >
+                          Resolve & Close
+                        </button>
                       )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* ========================================================= */}
-        {/* MODULE 5: RETURNS & ASSET MANAGEMENT */}
+        {/* MODULE 5: RETURNS & ASSETS */}
         {/* ========================================================= */}
         {activeTab === 'returns_assets' && (
           <div className="space-y-6">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-wrap justify-between items-center gap-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-wrap justify-between items-center gap-4">
               <div>
                 <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
                   Field Assets & Reverse Logistics
                 </span>
-                <h2 className="text-2xl font-bold text-slate-900 mt-1">Returns and Asset Management</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mt-1">Returns and Asset Tracking</h2>
                 <p className="text-sm text-slate-500">
-                  Track returned products from retail outlets and maintain company assets (Freezers, POSM racks, Signboards).
+                  Track retail counter returns and company display fixtures recorded in Salesforce.
                 </p>
               </div>
 
               <div className="flex border border-slate-200 bg-slate-50 p-1 rounded-xl">
                 <button
                   onClick={() => setReturnAssetSubTab('returns')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                     returnAssetSubTab === 'returns'
                       ? 'bg-white text-blue-700 shadow-sm'
                       : 'text-slate-600 hover:text-slate-900'
@@ -1157,7 +1010,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => setReturnAssetSubTab('assets')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition ${
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                     returnAssetSubTab === 'assets'
                       ? 'bg-white text-blue-700 shadow-sm'
                       : 'text-slate-600 hover:text-slate-900'
@@ -1168,171 +1021,127 @@ export default function App() {
               </div>
             </div>
 
-            {/* Sub-view: Returns */}
             {returnAssetSubTab === 'returns' && (
-              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden p-4 space-y-4">
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden p-4 space-y-4">
                 <h3 className="font-bold text-slate-900 flex items-center space-x-2">
                   <RotateCcw className="w-5 h-5 text-blue-600" />
-                  <span>Retailer Returns Processing</span>
+                  <span>Product Returns Log ({returns.length})</span>
                 </h3>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-700">
-                    <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
-                      <tr>
-                        <th className="px-4 py-3">Return # & Date</th>
-                        <th className="px-4 py-3">Retail Outlet</th>
-                        <th className="px-4 py-3">Product Name</th>
-                        <th className="px-4 py-3">Quantity</th>
-                        <th className="px-4 py-3">Reason</th>
-                        <th className="px-4 py-3">Physical Condition</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {returns.map(ret => (
-                        <tr key={ret.id} className="hover:bg-slate-50 transition">
-                          <td className="px-4 py-3 font-mono text-xs font-bold">{ret.returnNumber}</td>
-                          <td className="px-4 py-3 font-semibold text-slate-900">{ret.retailerName}</td>
-                          <td className="px-4 py-3">{ret.productName}</td>
-                          <td className="px-4 py-3 font-bold text-slate-800">{ret.quantity} Units</td>
-                          <td className="px-4 py-3 text-xs text-rose-700 font-medium">{ret.reason}</td>
-                          <td className="px-4 py-3 text-xs font-semibold">{ret.condition}</td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                                ret.status.includes('Approved')
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}
-                            >
-                              {ret.status}
-                            </span>
-                            {ret.creditNoteNumber && (
-                              <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                                CN: {ret.creditNoteNumber}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            {ret.status === 'Pending Approval' && (
-                              <button
-                                onClick={() => handleApproveReturn(ret.id)}
-                                className="px-2.5 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium"
-                              >
-                                Approve & Restock
-                              </button>
-                            )}
-                          </td>
+                {returns.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 text-xs">
+                    No product returns logged for this distributor territory in Salesforce.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-slate-700">
+                      <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+                        <tr>
+                          <th className="px-4 py-3">Return # & Date (IST)</th>
+                          <th className="px-4 py-3">Retail Outlet</th>
+                          <th className="px-4 py-3">Product Name</th>
+                          <th className="px-4 py-3">Quantity</th>
+                          <th className="px-4 py-3">Reason</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {returns.map(ret => (
+                          <tr key={ret.id} className="hover:bg-slate-50 transition">
+                            <td className="px-4 py-3 font-mono text-xs font-bold">{ret.returnNumber}</td>
+                            <td className="px-4 py-3 font-semibold text-slate-900">{ret.outletName}</td>
+                            <td className="px-4 py-3">{ret.productName}</td>
+                            <td className="px-4 py-3 font-bold text-slate-800">{ret.quantity} Units</td>
+                            <td className="px-4 py-3 text-xs text-rose-700 font-medium">{ret.returnReason}</td>
+                            <td className="px-4 py-3">
+                              <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">
+                                {ret.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {ret.status === 'Requested' && (
+                                <button
+                                  onClick={() => handleApproveReturn(ret.id)}
+                                  className="px-2.5 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium cursor-pointer"
+                                >
+                                  Approve & Restock
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Sub-view: Assets */}
             {returnAssetSubTab === 'assets' && (
-              <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden p-4 space-y-4">
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden p-4 space-y-4">
                 <h3 className="font-bold text-slate-900 flex items-center space-x-2">
                   <ShieldCheck className="w-5 h-5 text-blue-600" />
-                  <span>Company Assigned Assets Tracking</span>
+                  <span>Company Assigned Assets Tracking ({assets.length})</span>
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {assets.map(asset => (
-                    <div key={asset.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="text-xs font-mono text-slate-400">{asset.assetCode}</span>
-                          <h4 className="font-bold text-slate-900">{asset.assetType}</h4>
-                          <span className="text-xs text-slate-500">{asset.modelNumber} • SN: {asset.serialNumber}</span>
+                {assets.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 text-xs">
+                    No company assets currently recorded for this territory.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {assets.map(asset => (
+                      <div key={asset.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-xs font-mono text-slate-400">{asset.assetNumber}</span>
+                            <h4 className="font-bold text-slate-900">{asset.assetName}</h4>
+                            <span className="text-xs text-slate-500">Placed at: {asset.placedOutletName}</span>
+                          </div>
+                          <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800">
+                            {asset.status}
+                          </span>
                         </div>
-                        <span
-                          className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
-                            asset.status === 'Operational'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : asset.status === 'Needs Service'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
-                        >
-                          {asset.status}
-                        </span>
-                      </div>
-
-                      <div className="text-xs text-slate-600 pt-2 border-t border-slate-200 flex justify-between">
-                        <span>Assigned to: <strong className="text-slate-800">{asset.assignedLocation}</strong></span>
-                        <span>Last Service: {asset.lastServiceDate}</span>
-                      </div>
-
-                      {asset.serviceRemarks && (
-                        <div className="text-xs text-slate-500 italic bg-white p-2 rounded border border-slate-200">
-                          {asset.serviceRemarks}
+                        <div className="text-xs text-slate-500 pt-2 border-t border-slate-200 flex justify-between">
+                          <span>Verified: {asset.lastServiceDate}</span>
+                          <span>Category: {asset.category}</span>
                         </div>
-                      )}
-
-                      <div className="pt-2 flex justify-end space-x-2">
-                        {asset.status !== 'Operational' && (
-                          <button
-                            onClick={() =>
-                              handleAssetServiceUpdate(asset.id, 'Operational', 'Technician serviced and certified operational.')
-                            }
-                            className="px-2.5 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium"
-                          >
-                            Mark Repaired
-                          </button>
-                        )}
-                        {asset.status === 'Operational' && (
-                          <button
-                            onClick={() =>
-                              handleAssetServiceUpdate(asset.id, 'Needs Service', 'Outlet reported cooling/knob issue.')
-                            }
-                            className="px-2.5 py-1 text-xs bg-amber-600 hover:bg-amber-700 text-white rounded font-medium"
-                          >
-                            Report Service Needed
-                          </button>
-                        )}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
         {/* ========================================================= */}
-        {/* MODULE 6: MANAGERS — DASHBOARDS AND REPORTS */}
+        {/* MODULE 6: PERFORMANCE & COVERAGE REPORTS */}
         {/* ========================================================= */}
         {activeTab === 'reports' && (
           <div className="space-y-6">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-wrap justify-between items-center gap-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-wrap justify-between items-center gap-4">
               <div>
                 <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-                  Manager Analytics
+                  Manager Analytics • Indian Standard Time
                 </span>
-                <h2 className="text-2xl font-bold text-slate-900 mt-1">Managers — Dashboards and Reports</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mt-1">Distributor Performance & Target</h2>
                 <p className="text-sm text-slate-500">
-                  The 4 essential reports: Sales vs Target, Beat Productivity, Outlet Coverage, and Distributor Stock.
+                  Real-time sales achievements and outlet coverage for <strong>{distributor.name}</strong>.
                 </p>
               </div>
               <span className="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg font-mono">
-                Period: {salesReport.period}
+                {salesReport.period}
               </span>
             </div>
 
-            {/* REPORT 1: SALES VS TARGET */}
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+            {/* Sales vs Target */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
               <h3 className="font-bold text-slate-900 text-lg flex items-center space-x-2">
                 <TrendingUp className="w-5 h-5 text-blue-600" />
-                <span>Report 1: Sales vs Target (Achievement & Growth)</span>
+                <span>Sales Representative Achievement</span>
               </h3>
-              <p className="text-xs text-slate-500">
-                Compares actual sales with targets by Sales Representative and category, comparing this month versus last month.
-              </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {salesReport.srMetrics.map((sr, idx) => (
@@ -1340,85 +1149,35 @@ export default function App() {
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-bold text-slate-900">{sr.srName}</h4>
-                        <span className="text-xs text-slate-500">Target: ₹{sr.target.toLocaleString()}</span>
+                        <span className="text-xs text-slate-500">Designation: {sr.designation || 'Sales Executive'}</span>
                       </div>
                       <span className="text-sm font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                        {sr.achievementPct}% Achieved
+                        ₹{(sr.actual || 0).toLocaleString()} Billed
                       </span>
                     </div>
 
-                    {/* Progress Bar */}
                     <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
                       <div
                         className="bg-blue-600 h-3 rounded-full transition-all"
-                        style={{ width: `${Math.min(sr.achievementPct, 100)}%` }}
+                        style={{ width: `${Math.min(sr.achievementPct || 75, 100)}%` }}
                       ></div>
                     </div>
 
                     <div className="flex justify-between text-xs text-slate-600 pt-1">
-                      <span>Actual MTD: <strong>₹{sr.actual.toLocaleString()}</strong></span>
-                      <span>Last Month: ₹{sr.lastMonthActual.toLocaleString()} (+{sr.growthPct}% MoM)</span>
+                      <span>Target: ₹{sr.target.toLocaleString()}</span>
+                      <span>Progress: <strong>{sr.achievementPct}%</strong></span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* REPORT 2: BEAT PRODUCTIVITY */}
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-              <h3 className="font-bold text-slate-900 text-lg flex items-center space-x-2">
-                <BarChart3 className="w-5 h-5 text-indigo-600" />
-                <span>Report 2: Beat Productivity (Planned vs Visited vs Billed)</span>
-              </h3>
-              <p className="text-xs text-slate-500">
-                Shows shops planned vs shops visited, and how many visits resulted in an order (Strike Rate).
-              </p>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-700">
-                  <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3">Beat Route</th>
-                      <th className="px-4 py-3">SR Name</th>
-                      <th className="px-4 py-3">Shops Planned</th>
-                      <th className="px-4 py-3">Shops Visited</th>
-                      <th className="px-4 py-3">Orders Billed</th>
-                      <th className="px-4 py-3">Strike Rate %</th>
-                      <th className="px-4 py-3 text-right">Order Value</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {beatReport.map((b, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 transition">
-                        <td className="px-4 py-3 font-semibold text-slate-900">{b.beatName}</td>
-                        <td className="px-4 py-3 text-xs text-blue-700 font-semibold">{b.assignedSR}</td>
-                        <td className="px-4 py-3 font-bold">{b.totalPlannedShops}</td>
-                        <td className="px-4 py-3 font-bold text-slate-800">{b.visitedShops}</td>
-                        <td className="px-4 py-3 font-bold text-emerald-600">{b.billedOrders}</td>
-                        <td className="px-4 py-3">
-                          <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                            {b.strikeRatePct}%
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-slate-900">
-                          ₹{b.totalOrderValue.toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* REPORT 3: OUTLET COVERAGE */}
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+            {/* Outlet Coverage Overview */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
               <h3 className="font-bold text-slate-900 text-lg flex items-center space-x-2">
                 <Store className="w-5 h-5 text-emerald-600" />
-                <span>Report 3: Outlet Coverage (Active Buyers vs Attention Needed)</span>
+                <span>Outlet Coverage Status</span>
               </h3>
-              <p className="text-xs text-slate-500">
-                Shows how many outlets in the area are active buyers ({coverageReport.activeBuyers} of {coverageReport.totalOutlets}) and highlights outlets needing immediate attention.
-              </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center">
@@ -1426,7 +1185,7 @@ export default function App() {
                   <div className="text-2xl font-bold text-emerald-900">{coverageReport.activeBuyers} Outlets</div>
                 </div>
                 <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-center">
-                  <span className="text-xs text-rose-700 font-semibold">Inactive / Attention</span>
+                  <span className="text-xs text-rose-700 font-semibold">Credit Hold / Attention</span>
                   <div className="text-2xl font-bold text-rose-900">{coverageReport.inactiveOutlets} Outlets</div>
                 </div>
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-center">
@@ -1434,69 +1193,13 @@ export default function App() {
                   <div className="text-2xl font-bold text-blue-900">{coverageReport.coveragePct}%</div>
                 </div>
               </div>
-
-              <div>
-                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  Inactive Outlets Requiring Follow-Up:
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {coverageReport.inactiveList.slice(0, 4).map((item, idx) => (
-                    <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex justify-between items-center text-xs">
-                      <div>
-                        <div className="font-bold text-slate-800">{item.outletName}</div>
-                        <span className="text-slate-500">{item.beatName} • SR: {item.assignedSR}</span>
-                      </div>
-                      <span className="text-rose-700 font-bold bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
-                        No orders in {item.daysSinceLastOrder}d
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* REPORT 4: DISTRIBUTOR STOCK HEALTH */}
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-              <h3 className="font-bold text-slate-900 text-lg flex items-center space-x-2">
-                <Package className="w-5 h-5 text-amber-600" />
-                <span>Report 4: Distributor Stock (Slow-Moving & Expiry Risk)</span>
-              </h3>
-              <p className="text-xs text-slate-500">
-                Monitors stock on hand, items that are slow-moving, and products close to expiry.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {stockHeld.map(item => (
-                  <div key={item.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div className="font-bold text-slate-900 text-sm">{item.productName}</div>
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                          item.velocity === 'Fast Moving'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {item.velocity}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-600 flex justify-between">
-                      <span>Available: <strong>{item.availableStock} Units</strong></span>
-                      <span>Value: <strong>₹{(item.availableStock * item.unitPrice).toLocaleString()}</strong></span>
-                    </div>
-                    <div className={`text-xs ${item.daysToExpiry < 60 ? 'text-rose-600 font-bold' : 'text-slate-500'}`}>
-                      Expires in: {item.daysToExpiry} days ({item.expiryDate})
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         )}
       </main>
 
       {/* ========================================================= */}
-      {/* MODAL 1: ORDER LINE ITEMS INSPECTOR */}
+      {/* MODAL 1: ORDER LINE ITEMS */}
       {/* ========================================================= */}
       {selectedOrderForModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1505,26 +1208,26 @@ export default function App() {
               <div>
                 <span className="text-xs font-mono text-slate-400">{selectedOrderForModal.orderNumber}</span>
                 <h3 className="text-lg font-bold text-slate-900">{selectedOrderForModal.retailerName}</h3>
-                <span className="text-xs text-slate-500">SR: {selectedOrderForModal.salesRepName} • {selectedOrderForModal.orderDate}</span>
+                <span className="text-xs text-slate-500">Booking Date: {selectedOrderForModal.orderDate}</span>
               </div>
               <button
                 onClick={() => setSelectedOrderForModal(null)}
-                className="text-slate-400 hover:text-slate-700"
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Ordered Products:</h4>
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Order Items:</h4>
               <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">
                 {selectedOrderForModal.items.map(item => (
                   <div key={item.id} className="p-3 flex justify-between items-center text-sm">
                     <div>
                       <div className="font-semibold text-slate-900">{item.productName}</div>
-                      <span className="text-xs text-slate-500">Qty: {item.quantity} units @ ₹{item.unitPrice}</span>
+                      <span className="text-xs text-slate-500">Qty: {item.quantity} cases @ ₹{item.unitPrice}</span>
                     </div>
-                    <span className="font-bold text-slate-800">₹{item.lineTotal.toLocaleString()}</span>
+                    <span className="font-bold text-slate-800">₹{(item.lineTotal || 0).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -1532,13 +1235,12 @@ export default function App() {
 
             <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
               <div>
-                <span className="text-xs text-slate-500 block">Total Order Amount:</span>
-                <span className="text-xl font-bold text-slate-900">₹{selectedOrderForModal.totalAmount.toLocaleString()}</span>
+                <span className="text-xs text-slate-500 block">Total Billed:</span>
+                <span className="text-xl font-bold text-slate-900">₹{(selectedOrderForModal.totalAmount || 0).toLocaleString()}</span>
               </div>
-
               <button
                 onClick={() => setSelectedOrderForModal(null)}
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl"
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl cursor-pointer"
               >
                 Close
               </button>
@@ -1548,7 +1250,7 @@ export default function App() {
       )}
 
       {/* ========================================================= */}
-      {/* MODAL 2: GOODS RECEIVED NOTE (GRN) CREATION */}
+      {/* MODAL 2: GRN CREATION */}
       {/* ========================================================= */}
       {showGRNModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1558,13 +1260,13 @@ export default function App() {
           >
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Process 1: Stock In — Goods Received Note (GRN)</h3>
-                <p className="text-xs text-slate-500">Receive company primary shipment and increase available stock.</p>
+                <h3 className="text-lg font-bold text-slate-900">Receive Stock — Goods Received Note (GRN)</h3>
+                <p className="text-xs text-slate-500">Depot: {distributor.defaultWarehouseName} • Timezone: IST</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowGRNModal(false)}
-                className="text-slate-400 hover:text-slate-700"
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 ✕
               </button>
@@ -1578,15 +1280,17 @@ export default function App() {
                   onChange={e => setGrnProduct(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
                 >
-                  {stockHeld.map(s => (
-                    <option key={s.id} value={s.productName}>{s.productName}</option>
-                  ))}
+                  <option value="Herbal Shampoo 200ml">Herbal Shampoo 200ml</option>
+                  <option value="Organic Green Tea 100g">Organic Green Tea 100g</option>
+                  <option value="Royal Almond Shampoo 250ml">Royal Almond Shampoo 250ml</option>
+                  <option value="Parle-G Original Glucose Biscuit">Parle-G Original Glucose Biscuit</option>
+                  <option value="Monaco Classic Salted Crackers">Monaco Classic Salted Crackers</option>
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Received Quantity (Units)</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Received Quantity (Cases)</label>
                   <input
                     type="number"
                     min="1"
@@ -1620,7 +1324,7 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Company PO Reference #</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Factory PO Reference #</label>
                   <input
                     type="text"
                     value={grnPO}
@@ -1636,13 +1340,13 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowGRNModal(false)}
-                className="px-4 py-2 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg"
+                className="px-4 py-2 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
               >
                 Receive Goods & Update Stock
               </button>
@@ -1662,13 +1366,13 @@ export default function App() {
           >
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Raise Issue to Distributor Officer (DO)</h3>
-                <p className="text-xs text-slate-500">Submit product, portal, or delivery concerns directly to admin.</p>
+                <h3 className="text-lg font-bold text-slate-900">Raise Issue to Salesforce DO Desk</h3>
+                <p className="text-xs text-slate-500">Syncs directly to Salesforce custom object Ticket__c</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowNewTicketModal(false)}
-                className="text-slate-400 hover:text-slate-700"
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 ✕
               </button>
@@ -1681,12 +1385,15 @@ export default function App() {
                   <select
                     value={ticketCategory}
                     onChange={e => setTicketCategory(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium"
                   >
-                    <option value="Product Issue">Product Issue (Damaged/Defect)</option>
-                    <option value="Delivery Delay">Delivery Delay / Logistics</option>
-                    <option value="Portal Issue">Portal Issue / Sync Glitch</option>
-                    <option value="Billing Dispute">Billing Dispute / Credit Note</option>
+                    <option value="Damaged Stock">Damaged Stock</option>
+                    <option value="Product Quality">Product Quality</option>
+                    <option value="Delayed Delivery">Delayed Delivery</option>
+                    <option value="Billing Issue">Billing Issue</option>
+                    <option value="Scheme Dispute">Scheme Dispute</option>
+                    <option value="Display Asset">Display Asset</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
 
@@ -1695,9 +1402,9 @@ export default function App() {
                   <select
                     value={ticketPriority}
                     onChange={e => setTicketPriority(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium"
                   >
-                    <option value="Critical">Critical</option>
+                    <option value="Urgent">Urgent</option>
                     <option value="High">High</option>
                     <option value="Medium">Medium</option>
                     <option value="Low">Low</option>
@@ -1709,7 +1416,7 @@ export default function App() {
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Subject</label>
                 <input
                   type="text"
-                  placeholder="e.g. 4 cartons of Parle-G crushed during truck unloading"
+                  placeholder="e.g. 5 cartons of biscuits crushed during transit"
                   value={ticketSubject}
                   onChange={e => setTicketSubject(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
@@ -1721,7 +1428,7 @@ export default function App() {
                 <label className="text-xs font-semibold text-slate-700 block mb-1">Detailed Description</label>
                 <textarea
                   rows={3}
-                  placeholder="Provide batch number, quantity affected, or specific error observed..."
+                  placeholder="Provide batch details, affected carton count, vehicle number..."
                   value={ticketDesc}
                   onChange={e => setTicketDesc(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
@@ -1734,18 +1441,87 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowNewTicketModal(false)}
-                className="px-4 py-2 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg"
+                className="px-4 py-2 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
               >
-                Submit Ticket to DO Desk
+                Submit Live to Salesforce
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL 4: DISTRIBUTOR PROFILE & CREDIT LIMIT */}
+      {/* ========================================================= */}
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-xs font-mono text-blue-600 uppercase font-bold tracking-wider">
+                  Distributor Profile
+                </span>
+                <h3 className="text-xl font-bold text-slate-900 mt-0.5">{distributor.name}</h3>
+              </div>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                <span className="text-slate-500 text-xs">Distributor Code</span>
+                <span className="font-mono font-bold text-slate-900">{distributor.code}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                <span className="text-slate-500 text-xs">GSTIN Number</span>
+                <span className="font-mono font-bold text-slate-900">{distributor.gstin}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl">
+                <span className="text-emerald-700 text-xs font-medium">Sanctioned Credit Limit</span>
+                <span className="font-bold text-emerald-900">₹{distributor.creditLimit.toLocaleString()}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+                <span className="text-blue-700 text-xs font-medium">Current Outstanding</span>
+                <span className="font-bold text-blue-900">₹{distributor.currentOutstanding.toLocaleString()}</span>
+              </div>
+
+              <div className="flex items-start justify-between p-3 bg-slate-50 rounded-xl">
+                <span className="text-slate-500 text-xs">Primary Depot</span>
+                <span className="font-semibold text-slate-900 text-right text-xs">
+                  {distributor.defaultWarehouseName}
+                </span>
+              </div>
+
+              <div className="flex items-start justify-between p-3 bg-slate-50 rounded-xl">
+                <span className="text-slate-500 text-xs">Territory Area</span>
+                <span className="font-semibold text-slate-900 text-right text-xs">
+                  {distributor.area}
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl cursor-pointer"
+              >
+                Close Profile
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

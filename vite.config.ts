@@ -4,6 +4,24 @@ import tailwindcss from '@tailwindcss/vite'
 import fs from 'fs'
 import path from 'path'
 import https from 'https'
+import { execSync } from 'child_process'
+
+function refreshToken(activeTokenPath: string, instanceUrl: string): string {
+  try {
+    console.log('[salesforce-proxy] Token expired or missing. Auto-refreshing via sf CLI...');
+    const out = execSync('sf org auth show-access-token --target-org SFAOrg --json', { encoding: 'utf8' });
+    const parsed = JSON.parse(out);
+    if (parsed?.result?.accessToken) {
+      const freshToken = parsed.result.accessToken;
+      fs.writeFileSync(activeTokenPath, JSON.stringify({ accessToken: freshToken, instanceUrl }, null, 2));
+      console.log('[salesforce-proxy] Fresh access token saved.');
+      return freshToken;
+    }
+  } catch (err: any) {
+    console.error('[salesforce-proxy] Auto-refresh token error:', err?.message || err);
+  }
+  return '';
+}
 
 function salesforceProxyPlugin(): Plugin {
   return {
@@ -24,6 +42,10 @@ function salesforceProxyPlugin(): Plugin {
           console.error('Error reading active_token.json:', e);
         }
 
+        if (!token) {
+          token = refreshToken(activeTokenPath, instanceUrl);
+        }
+
         const targetUrl = new URL(instanceUrl);
         const subPath = req.url || '';
 
@@ -31,35 +53,48 @@ function salesforceProxyPlugin(): Plugin {
         req.on('data', chunk => chunks.push(Buffer.from(chunk)));
         req.on('end', () => {
           const bodyBuffer = Buffer.concat(chunks);
-          const headers: Record<string, string | number> = {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': req.headers['content-type'] || 'application/json'
+          const sendRequest = (authToken: string, isRetry = false) => {
+            const headers: Record<string, string | number> = {
+              'Authorization': 'Bearer ' + authToken,
+              'Content-Type': req.headers['content-type'] || 'application/json'
+            };
+            if (req.method !== 'GET' && req.method !== 'HEAD') {
+              headers['Content-Length'] = bodyBuffer.length;
+            }
+
+            const sfReq = https.request({
+              hostname: targetUrl.hostname,
+              port: 443,
+              path: subPath,
+              method: req.method,
+              headers: headers
+            }, (sfRes) => {
+              // If 401 Unauthorized, automatically refresh token and retry once
+              if (sfRes.statusCode === 401 && !isRetry) {
+                console.warn('[salesforce-proxy] 401 received. Attempting automatic token refresh & retry...');
+                const fresh = refreshToken(activeTokenPath, instanceUrl);
+                if (fresh) {
+                  return sendRequest(fresh, true);
+                }
+              }
+
+              res.statusCode = sfRes.statusCode || 200;
+              res.setHeader('Content-Type', sfRes.headers['content-type'] || 'application/json');
+              sfRes.pipe(res);
+            });
+
+            sfReq.on('error', (err) => {
+              res.statusCode = 502;
+              res.end(JSON.stringify({ error: 'Salesforce Proxy Error: ' + err.message }));
+            });
+
+            if (bodyBuffer.length > 0) {
+              sfReq.write(bodyBuffer);
+            }
+            sfReq.end();
           };
-          if (req.method !== 'GET' && req.method !== 'HEAD') {
-            headers['Content-Length'] = bodyBuffer.length;
-          }
 
-          const sfReq = https.request({
-            hostname: targetUrl.hostname,
-            port: 443,
-            path: subPath,
-            method: req.method,
-            headers: headers
-          }, (sfRes) => {
-            res.statusCode = sfRes.statusCode || 200;
-            res.setHeader('Content-Type', sfRes.headers['content-type'] || 'application/json');
-            sfRes.pipe(res);
-          });
-
-          sfReq.on('error', (err) => {
-            res.statusCode = 502;
-            res.end(JSON.stringify({ error: 'Salesforce Proxy Error: ' + err.message }));
-          });
-
-          if (bodyBuffer.length > 0) {
-            sfReq.write(bodyBuffer);
-          }
-          sfReq.end();
+          sendRequest(token);
         });
       });
     }
