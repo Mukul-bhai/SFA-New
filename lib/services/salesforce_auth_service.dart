@@ -11,7 +11,7 @@ class SalesforceAuthService {
 
   // Active Bearer token from Salesforce CLI
   static final String defaultBearerToken = utf8.decode(base64.decode(
-    'MDBEZzgwMDAwMExST1ZCIUFRRUFRTjdIaW5ncVM4dUY4MVNsc0l1V1g0RFdsVmszVm1rU09RRjN2a1owVzdlQ0dyUDZaZnJRZkhSNWJxdVdWNGtsejhURUFjQjh0ei50R2VnbjFBcktoQnhYcWV6Mg==',
+    'MDBEZzgwMDAwMExST1ZCIUFRRUFRRFdpSlpYdHpzeVlfcVFaZGN0RWNtQlBHckQ4emZSSDFPZFd4M3NIT3JqZXBaRXhoTnJyb2k0YWlseHhaNUtsaXNGY05TeUJVY2VZSXZwSWppLndsZTBJVjRmeA==',
   ));
 
   static String activeToken = defaultBearerToken;
