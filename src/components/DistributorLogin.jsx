@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Lock, ArrowRight, ShieldCheck, Clock, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Building2, Lock, ArrowRight, ShieldCheck, Clock, CheckCircle2, AlertCircle, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { DMSDataService } from '../services/api';
 import { formatIST } from '../utils/dateUtils';
 
@@ -8,6 +8,7 @@ export default function DistributorLogin({ onLoginSuccess }) {
   const [pin, setPin] = useState('1234');
   const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isSyncingSF, setIsSyncingSF] = useState(false);
   const [error, setError] = useState(null);
   const [distributors, setDistributors] = useState([]);
   const [currentTimeIST, setCurrentTimeIST] = useState(formatIST(new Date()));
@@ -20,23 +21,49 @@ export default function DistributorLogin({ onLoginSuccess }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch registered distributors
+  // Fetch registered distributors (both instant cache and live Salesforce sync)
   useEffect(() => {
     async function loadDistributors() {
-      const all = DMSDataService.getAllDistributors();
-      if (all && all.length > 0) {
-        setDistributors(all);
-        setDistributorCode(all[0].code);
-      } else {
-        const synced = await DMSDataService.syncDistributorsFromSalesforce();
-        setDistributors(synced);
-        if (synced && synced.length > 0) {
-          setDistributorCode(synced[0].code);
+      // 1. Immediately display cached distributors so UI has zero delay
+      const cached = DMSDataService.getAllDistributors();
+      if (cached && cached.length > 0) {
+        setDistributors(cached);
+        setDistributorCode(cached[0].code);
+      }
+
+      // 2. Concurrently fetch fresh live list directly from Salesforce Distributor__c
+      setIsSyncingSF(true);
+      try {
+        const live = await DMSDataService.syncDistributorsFromSalesforce();
+        if (live && live.length > 0) {
+          setDistributors(live);
+          if (!distributorCode) {
+            setDistributorCode(live[0].code);
+          }
         }
+      } catch (err) {
+        console.warn('Background Salesforce distributor sync error:', err);
+      } finally {
+        setIsSyncingSF(false);
       }
     }
     loadDistributors();
   }, []);
+
+  const handleManualSync = async () => {
+    setIsSyncingSF(true);
+    setError(null);
+    try {
+      const live = await DMSDataService.syncDistributorsFromSalesforce();
+      if (live && live.length > 0) {
+        setDistributors(live);
+      }
+    } catch (err) {
+      setError('Salesforce sync error: ' + (err?.message || err));
+    } finally {
+      setIsSyncingSF(false);
+    }
+  };
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
@@ -192,9 +219,24 @@ export default function DistributorLogin({ onLoginSuccess }) {
 
           {/* Quick Select Accordion of Real Salesforce Distributors */}
           <div className="pt-4 border-t border-slate-100">
-            <span className="text-xs font-bold text-slate-700 block mb-2">
-              Registered Distributor Accounts (Salesforce Live):
-            </span>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
+                <span>Registered Accounts (Salesforce Live)</span>
+                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {distributors.length} Synced
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={handleManualSync}
+                disabled={isSyncingSF}
+                className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold flex items-center space-x-1 cursor-pointer disabled:opacity-50"
+                title="Fetch newly created distributors from Salesforce"
+              >
+                <RefreshCw className={`w-3 h-3 ${isSyncingSF ? 'animate-spin text-blue-600' : ''}`} />
+                <span>{isSyncingSF ? 'Syncing...' : 'Sync Salesforce'}</span>
+              </button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {distributors.map((d) => (
                 <button

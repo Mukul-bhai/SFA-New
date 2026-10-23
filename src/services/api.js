@@ -76,6 +76,20 @@ const BASELINE_DISTRIBUTORS = [
     defaultWarehouseId: null,
     defaultWarehouseName: 'Depot North',
     gstin: '07AABCR9911K1Z2'
+  },
+  {
+    id: 'a02g800000FLEQjAAP',
+    code: 'THA-001',
+    name: 'Thakur Distributors',
+    area: 'Delhi NCR & North Region',
+    phone: '+91 98110 55443',
+    email: 'thakur.distributors@parledms.in',
+    status: 'Active',
+    creditLimit: 50000,
+    currentOutstanding: 0,
+    defaultWarehouseId: null,
+    defaultWarehouseName: 'Main Regional Depot',
+    gstin: '07AAAAA0000A1Z9'
   }
 ];
 
@@ -116,23 +130,31 @@ export class DMSDataService {
       return { success: false, error: 'Please enter your Security PIN / Password.' };
     }
 
-    // Ensure distributors are synced
+    // Try finding in existing local distributor list
     let distributors = this.getAllDistributors();
-    if (!distributors || distributors.length === 0) {
-      distributors = await this.syncDistributorsFromSalesforce();
-    }
-
-    const matched = distributors.find(d => 
+    let matched = distributors.find(d => 
       (d.code && d.code.toUpperCase() === cred) ||
       (d.id && d.id.toUpperCase() === cred) ||
       (d.name && d.name.toUpperCase().includes(cred)) ||
       (d.email && d.email.toUpperCase() === cred)
     );
 
+    // If not found in local cache, immediately query live Salesforce Distributor__c records
+    if (!matched) {
+      console.log(`[DMS Auth] Distributor "${cred}" not found in local cache. Performing live Salesforce lookup...`);
+      distributors = await this.syncDistributorsFromSalesforce();
+      matched = distributors.find(d => 
+        (d.code && d.code.toUpperCase() === cred) ||
+        (d.id && d.id.toUpperCase() === cred) ||
+        (d.name && d.name.toUpperCase().includes(cred)) ||
+        (d.email && d.email.toUpperCase() === cred)
+      );
+    }
+
     if (!matched) {
       return {
         success: false,
-        error: `Distributor code "${credential}" is not registered in Salesforce. Please check and try again.`
+        error: `Distributor code "${credential}" is not found in Salesforce. Please verify the code or check Salesforce Org records.`
       };
     }
 
@@ -200,7 +222,7 @@ export class DMSDataService {
   static async syncDistributorsFromSalesforce() {
     try {
       const soql = encodeURIComponent(
-        'SELECT Id, Name, Distributor_Code__c, Contact_Person__c, Credit_Limit__c, Current_Outstanding__c, Default_Warehouse__c, GSTIN__c, Status__c FROM Distributor__c'
+        'SELECT Id, Name, Distributor_Code__c, Contact_Person__c, Credit_Limit__c, Current_Outstanding__c, Default_Warehouse__c, Default_Warehouse__r.Name, GSTIN__c, Status__c FROM Distributor__c ORDER BY CreatedDate DESC'
       );
       const res = await fetch(`/api/salesforce/services/data/v68.0/query/?q=${soql}`);
       if (res.ok) {
@@ -208,19 +230,21 @@ export class DMSDataService {
         if (json && Array.isArray(json.records) && json.records.length > 0) {
           const sfDistributors = json.records.map(r => {
             const baseline = BASELINE_DISTRIBUTORS.find(b => b.id === r.Id) || {};
+            const cleanCode = r.Distributor_Code__c || baseline.code || `DIST-${r.Id.substring(12)}`;
+            const cleanName = r.Name || baseline.name || 'Parle Authorized Distributor';
             return {
               id: r.Id,
-              code: r.Distributor_Code__c || baseline.code || `DIST-${r.Id.substring(12)}`,
-              name: r.Name || baseline.name || 'Parle Distributor',
-              area: baseline.area || 'Regional Coverage, India',
+              code: cleanCode,
+              name: cleanName,
+              area: baseline.area || (cleanName ? `${cleanName} Operational Area, India` : 'Regional Coverage, India'),
               phone: baseline.phone || '+91 98000 00000',
-              email: baseline.email || 'distributor@parledms.in',
+              email: baseline.email || `${cleanCode.toLowerCase()}@parledms.in`,
               status: r.Status__c || 'Active',
-              creditLimit: r.Credit_Limit__c != null ? r.Credit_Limit__c : (baseline.creditLimit || 100000),
+              creditLimit: r.Credit_Limit__c != null ? r.Credit_Limit__c : (baseline.creditLimit || 50000),
               currentOutstanding: r.Current_Outstanding__c != null ? r.Current_Outstanding__c : (baseline.currentOutstanding || 0),
-              defaultWarehouseId: r.Default_Warehouse__c || baseline.defaultWarehouseId,
-              defaultWarehouseName: baseline.defaultWarehouseName || 'Main Depot',
-              gstin: r.GSTIN__c || baseline.gstin || '27AABCT0000A1Z0'
+              defaultWarehouseId: r.Default_Warehouse__c || baseline.defaultWarehouseId || null,
+              defaultWarehouseName: r.Default_Warehouse__r?.Name || baseline.defaultWarehouseName || 'Main Regional Depot',
+              gstin: r.GSTIN__c || baseline.gstin || '07AAAAA0000A1Z0'
             };
           });
           setStored(STORAGE_KEYS.DISTRIBUTORS_CACHE, sfDistributors);
