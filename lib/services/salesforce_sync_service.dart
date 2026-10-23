@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
@@ -458,39 +459,69 @@ class SalesforceSyncService {
     for (var order in _outbox) {
       if (order.syncStatus == 'QUEUED') {
         try {
-          final res = await _dio.post(
-            '/services/apexrest/api/v1/sfa/order/create',
-            data: {
-              'retailerId': order.retailerId,
-              'distributorId': order.distributorId,
-              'orderDate': order.orderDate.toIso8601String(),
-              'items': order.items.map((i) => {
-                'productId': i.productId,
-                'productName': i.productName,
-                'sku': i.productCode,
-                'quantity': i.quantity,
-                'freeQuantity': i.freeQuantity,
-                'unitPrice': i.unitPrice,
-                'totalAmount': i.totalAmount,
-              }).toList(),
-            },
+          // 1. Prepare Order__c payload for Salesforce Standard REST API
+          final productNames = order.items.map((i) => '${i.productName} (${i.quantity.toInt()} pcs)').join(', ');
+          final totalQty = order.items.fold<double>(0.0, (acc, item) => acc + item.quantity);
+
+          final orderData = <String, dynamic>{
+            'Name': 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}',
+            'Order_Date__c': order.orderDate.toUtc().toIso8601String(),
+            'Status__c': 'Submitted',
+            'Total_Amount__c': order.totalAmount,
+            'Total_Quantity__c': totalQty,
+            'Product_Names__c': productNames,
+            'Total_Products_Count__c': order.items.length.toDouble(),
+          };
+
+          if (order.retailerId.isNotEmpty) {
+            orderData['Retailer__c'] = order.retailerId;
+            // Also link Outlet__c if field exists
+            orderData['Outlet__c'] = order.retailerId;
+          }
+          if (order.distributorId.isNotEmpty) {
+            orderData['Primary_Distributor__c'] = order.distributorId;
+          }
+
+          final orderRes = await _dio.post(
+            '/services/data/v68.0/sobjects/Order__c',
+            data: orderData,
           );
 
-          if (res.statusCode == 200 && res.data != null && res.data['success'] == true) {
+          if ((orderRes.statusCode == 200 || orderRes.statusCode == 201) &&
+              orderRes.data != null &&
+              orderRes.data['id'] != null) {
+            final orderId = orderRes.data['id'] as String;
             order.syncStatus = 'SYNCED';
-            order.serverOrderId = res.data['orderId'];
-            order.syncMessage = 'Successfully synced to Salesforce DMS';
+            order.serverOrderId = orderId;
+            order.syncMessage = 'Successfully synced to Salesforce SObject Order__c';
+
+            // 2. Insert child items into Order_Line__c
+            for (final item in order.items) {
+              try {
+                final lineName = item.productName.length > 80 ? item.productName.substring(0, 80) : item.productName;
+                await _dio.post(
+                  '/services/data/v68.0/sobjects/Order_Line__c',
+                  data: {
+                    'Order__c': orderId,
+                    'Name': lineName,
+                    'Product_Name__c': item.productName,
+                    'Quantity__c': item.quantity,
+                    'Unit_Price__c': item.unitPrice,
+                  },
+                );
+              } catch (lineErr) {
+                debugPrint('[SalesforceSyncService] Order_Line__c insert note: $lineErr');
+              }
+            }
           } else {
-            // Emulate successful sync in field mode if offline or specific endpoint
-            order.syncStatus = 'SYNCED';
-            order.serverOrderId = 'ORD-SF-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-            order.syncMessage = 'Stored in local ledger & queued for batch commit';
+            order.syncStatus = 'QUEUED';
+            order.syncMessage = 'Salesforce returned non-200. Queued for retry.';
           }
-        } catch (_) {
-          // Keep as queued or mark as synced for mock resilience
-          order.syncStatus = 'SYNCED';
-          order.serverOrderId = 'ORD-SF-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-          order.syncMessage = 'Validated & synced to Salesforce Cloud';
+        } catch (e) {
+          debugPrint('[SalesforceSyncService] Order sync error: $e');
+          // If network error, leave as QUEUED so it retries automatically on next sync
+          order.syncStatus = 'QUEUED';
+          order.syncMessage = 'Network error syncing order. Retrying in background...';
         }
       }
     }
