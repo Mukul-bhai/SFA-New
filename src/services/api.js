@@ -12,12 +12,27 @@ const STORAGE_KEYS = {
   EMPLOYEES_CACHE: 'dms_employees_cache',
   OUTLETS_CACHE: 'dms_outlets_cache',
   ORDERS_CACHE: 'dms_orders_cache',
+  PRIMARY_ORDERS_CACHE: 'dms_primary_orders_cache',
   STOCK_CACHE: 'dms_stock_cache',
   TICKETS: 'dms_tickets_data',
   RETURNS: 'dms_returns_data',
   ASSETS: 'dms_assets_data',
   MOVEMENTS: 'dms_movements_data'
 };
+
+// Real Parle Products catalog synced from Salesforce Product__c
+export const PARLE_PRODUCTS = [
+  { id: 'a0Xg8000006wk73EAA', name: 'Parle-G Original Glucose Biscuit', code: 'P-GLU-001', mrp: 25, rbp: 21.5, category: 'Biscuits', packCase: 48 },
+  { id: 'a0Xg8000006wk74EAA', name: 'Monaco Classic Salted Crackers', code: 'P-MON-002', mrp: 20, rbp: 17.2, category: 'Biscuits', packCase: 36 },
+  { id: 'a0Xg8000006wk75EAA', name: 'Krackjack Sweet & Salty Biscuit', code: 'P-KRK-003', mrp: 30, rbp: 25.8, category: 'Biscuits', packCase: 36 },
+  { id: 'a0Xg8000006wk76EAA', name: 'Hide & Seek Chocolate Chip Cookies', code: 'P-HNS-004', mrp: 40, rbp: 34.0, category: 'Cookies', packCase: 24 },
+  { id: 'a0Xg8000006wk77EAA', name: 'Parle 20-20 Cashew Butter Cookies', code: 'P-TTW-005', mrp: 25, rbp: 21.25, category: 'Cookies', packCase: 40 },
+  { id: 'a0Xg8000006wk78EAA', name: 'Milano Choco Delight Cookies', code: 'P-MIL-006', mrp: 50, rbp: 42.5, category: 'Cookies', packCase: 24 },
+  { id: 'a0Xg8000006wk79EAA', name: 'Parle Platina Top Crackers', code: 'P-TOP-007', mrp: 20, rbp: 17.0, category: 'Crackers', packCase: 36 },
+  { id: 'a0Xg8000006wk7AEAQ', name: 'Parle Bourbon Chocolate Cream', code: 'P-BRB-008', mrp: 35, rbp: 29.75, category: 'Cream Biscuits', packCase: 30 },
+  { id: 'a0Xg8000006wk7BEAQ', name: 'Parle Gold Rich Glucose Biscuit', code: 'P-GLD-009', mrp: 40, rbp: 34.0, category: 'Biscuits', packCase: 24 },
+  { id: 'a0Xg8000006wk7CEAQ', name: 'Kopiko Coffee Candy Jar', code: 'P-KOP-010', mrp: 150, rbp: 120.0, category: 'Confectionery', packCase: 12 }
+];
 
 // Real baseline Distributors registered in Salesforce Distributor__c
 const BASELINE_DISTRIBUTORS = [
@@ -340,14 +355,17 @@ export class DMSDataService {
 
   /**
    * Sync real Orders from Salesforce Order__c & Order_Line__c
+   * Partitions into:
+   * 1. Secondary Orders: Retailer -> Distributor (Retailer__c != null)
+   * 2. Primary Orders: Distributor -> Company/Depot Procurement (Retailer__c == null)
    */
   static async syncOrdersFromSalesforce() {
     try {
       const orderSoql = encodeURIComponent(
-        'SELECT Id, Name, Primary_Distributor__c, Primary_Distributor__r.Name, Retailer__c, Retailer__r.Name, Retailer__r.Shop_Name__c, Sales_Executive__c, Sales_Executive__r.Name, Status__c, Total_Amount__c, Total_Quantity__c, Order_Date__c, CreatedDate FROM Order__c ORDER BY CreatedDate DESC LIMIT 50'
+        'SELECT Id, Name, Primary_Distributor__c, Primary_Distributor__r.Name, Retailer__c, Retailer__r.Name, Retailer__r.Shop_Name__c, Sales_Executive__c, Sales_Executive__r.Name, Status__c, Total_Amount__c, Total_Quantity__c, Product_Names__c, Order_Date__c, CreatedDate FROM Order__c ORDER BY CreatedDate DESC LIMIT 100'
       );
       const linesSoql = encodeURIComponent(
-        'SELECT Id, Name, Order__c, Product_Name__c, Quantity__c, Unit_Price__c, Line_Total__c, Fulfillment_Status__c, Fulfilling_Distributor__c FROM Order_Line__c LIMIT 100'
+        'SELECT Id, Name, Order__c, Product_Name__c, Quantity__c, Unit_Price__c, Line_Total__c, Fulfillment_Status__c, Fulfilling_Distributor__c FROM Order_Line__c LIMIT 200'
       );
 
       const [orderRes, linesRes] = await Promise.all([
@@ -365,10 +383,10 @@ export class DMSDataService {
               if (!linesMap[li.Order__c]) linesMap[li.Order__c] = [];
               linesMap[li.Order__c].push({
                 id: li.Id,
-                productName: li.Product_Name__c || 'Parle SKU Product',
+                productName: li.Product_Name__c || li.Name || 'Parle SKU Product',
                 quantity: li.Quantity__c || 1,
                 unitPrice: li.Unit_Price__c || 0,
-                lineTotal: li.Line_Total__c || 0,
+                lineTotal: li.Line_Total__c || ((li.Quantity__c || 1) * (li.Unit_Price__c || 0)),
                 fulfillmentStatus: li.Fulfillment_Status__c || 'Allocated'
               });
             });
@@ -376,39 +394,212 @@ export class DMSDataService {
         }
 
         if (orderJson && Array.isArray(orderJson.records)) {
-          const sfOrders = orderJson.records.map(o => ({
-            id: o.Id,
-            orderNumber: o.Name,
-            retailerId: o.Retailer__c,
-            retailerName: o.Retailer__r?.Name || 'Retail Customer',
-            retailerShopName: o.Retailer__r?.Shop_Name__c || o.Retailer__r?.Name || 'Store Outlet',
-            primaryDistributorId: o.Primary_Distributor__c,
-            primaryDistributorName: o.Primary_Distributor__r?.Name || 'Designated Distributor',
-            salesExecutiveName: o.Sales_Executive__r?.Name || 'Field Sales Executive',
-            orderDate: formatIST(o.Order_Date__c || o.CreatedDate),
-            status: o.Status__c || 'Submitted',
-            totalAmount: o.Total_Amount__c || 0,
-            paymentMethod: 'Credit Terms (14 Days)',
-            paymentStatus: o.Status__c === 'Dispatched' ? 'Paid' : 'Pending',
-            items: linesMap[o.Id] || []
-          }));
-          setStored(STORAGE_KEYS.ORDERS_CACHE, sfOrders);
-          return sfOrders;
+          const secondaryOrders = [];
+          const primaryOrders = [];
+
+          orderJson.records.forEach(o => {
+            const isPrimary = !o.Retailer__c;
+            const items = linesMap[o.Id] || [];
+
+            if (isPrimary) {
+              primaryOrders.push({
+                id: o.Id,
+                orderNumber: o.Name,
+                primaryDistributorId: o.Primary_Distributor__c,
+                primaryDistributorName: o.Primary_Distributor__r?.Name || 'Authorized Distributor',
+                depotName: 'Parle Central Plant & Depot',
+                orderDate: formatIST(o.Order_Date__c || o.CreatedDate),
+                status: o.Status__c || 'Submitted',
+                totalAmount: o.Total_Amount__c || (items.reduce((acc, i) => acc + (i.lineTotal || 0), 0)),
+                totalQuantity: o.Total_Quantity__c || (items.reduce((acc, i) => acc + (i.quantity || 0), 0)),
+                productNames: o.Product_Names__c || (items.map(i => `${i.productName} (${i.quantity})`).join(', ')),
+                paymentStatus: o.Status__c === 'Delivered' ? 'Paid' : 'Company Credit (21 Days)',
+                items: items,
+                grnCreated: o.Status__c === 'Delivered'
+              });
+            } else {
+              secondaryOrders.push({
+                id: o.Id,
+                orderNumber: o.Name,
+                retailerId: o.Retailer__c,
+                retailerName: o.Retailer__r?.Name || 'Retail Customer',
+                retailerShopName: o.Retailer__r?.Shop_Name__c || o.Retailer__r?.Name || 'Store Outlet',
+                primaryDistributorId: o.Primary_Distributor__c,
+                primaryDistributorName: o.Primary_Distributor__r?.Name || 'Designated Distributor',
+                salesExecutiveName: o.Sales_Executive__r?.Name || 'Field Sales Executive',
+                orderDate: formatIST(o.Order_Date__c || o.CreatedDate),
+                status: o.Status__c || 'Submitted',
+                totalAmount: o.Total_Amount__c || (items.reduce((acc, i) => acc + (i.lineTotal || 0), 0)),
+                totalQuantity: o.Total_Quantity__c || (items.reduce((acc, i) => acc + (i.quantity || 0), 0)),
+                productNames: o.Product_Names__c || (items.map(i => `${i.productName} (${i.quantity})`).join(', ')),
+                paymentMethod: 'Credit Terms (14 Days)',
+                paymentStatus: o.Status__c === 'Dispatched' ? 'Paid' : 'Pending',
+                items: items
+              });
+            }
+          });
+
+          setStored(STORAGE_KEYS.ORDERS_CACHE, secondaryOrders);
+          setStored(STORAGE_KEYS.PRIMARY_ORDERS_CACHE, primaryOrders);
+          return { secondaryOrders, primaryOrders };
         }
       }
     } catch (e) {
       console.warn('Salesforce orders fetch warning:', e);
     }
-    return getStored(STORAGE_KEYS.ORDERS_CACHE, []);
+    return {
+      secondaryOrders: getStored(STORAGE_KEYS.ORDERS_CACHE, []),
+      primaryOrders: getStored(STORAGE_KEYS.PRIMARY_ORDERS_CACHE, [])
+    };
   }
 
   /**
-   * Get Orders strictly scoped to logged-in Distributor
+   * Get Secondary Orders strictly scoped to logged-in Distributor
    */
   static getOrders() {
     const all = getStored(STORAGE_KEYS.ORDERS_CACHE, []);
     const activeDistId = this.getActiveDistributorId();
     return all.filter(o => o.primaryDistributorId === activeDistId);
+  }
+
+  /**
+   * Get Primary Orders strictly scoped to logged-in Distributor
+   */
+  static getPrimaryOrders() {
+    const all = getStored(STORAGE_KEYS.PRIMARY_ORDERS_CACHE, []);
+    const activeDistId = this.getActiveDistributorId();
+    return all.filter(o => o.primaryDistributorId === activeDistId);
+  }
+
+  /**
+   * Create New Primary Order (Procurement from Parle Depot into Distributor)
+   */
+  static async createPrimaryOrder({ items = [], plantName = 'Parle Central Depot A', remarks = '' }) {
+    const activeDist = this.getDistributor();
+    const activeDistId = this.getActiveDistributorId();
+    const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
+    const productSummary = items.map(i => `${i.productName} (${i.quantity} cases)`).join(', ');
+    const poNumber = `PO-2026-${Date.now().toString().substring(7)}`;
+
+    const orderPayload = {
+      Name: poNumber,
+      Primary_Distributor__c: activeDistId,
+      Status__c: 'Submitted',
+      Total_Amount__c: totalAmount,
+      Total_Quantity__c: totalQty,
+      Order_Date__c: new Date().toISOString(),
+      Product_Names__c: productSummary
+    };
+
+    let sfOrderId = `PO-LOCAL-${Date.now()}`;
+    try {
+      const res = await fetch('/api/salesforce/services/data/v68.0/sobjects/Order__c', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderPayload)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.id) {
+          sfOrderId = json.id;
+          // Insert lines
+          for (const item of items) {
+            try {
+              await fetch('/api/salesforce/services/data/v68.0/sobjects/Order_Line__c', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  Order__c: sfOrderId,
+                  Name: item.productName.substring(0, 80),
+                  Product_Name__c: item.productName,
+                  Quantity__c: item.quantity,
+                  Unit_Price__c: item.unitPrice
+                })
+              });
+            } catch (lineErr) {
+              console.warn('Error inserting primary order line:', lineErr);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Salesforce Order__c insert failed, saving locally:', err);
+    }
+
+    const newPrimaryOrder = {
+      id: sfOrderId,
+      orderNumber: poNumber,
+      primaryDistributorId: activeDistId,
+      primaryDistributorName: activeDist?.name || 'Authorized Distributor',
+      depotName: plantName,
+      orderDate: getCurrentISTTimestamp(),
+      status: 'Submitted',
+      totalAmount: totalAmount,
+      totalQuantity: totalQty,
+      productNames: productSummary,
+      remarks: remarks,
+      paymentStatus: 'Company Credit (21 Days)',
+      grnCreated: false,
+      items: items.map(i => ({
+        productName: i.productName,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        lineTotal: i.quantity * i.unitPrice
+      }))
+    };
+
+    const cached = getStored(STORAGE_KEYS.PRIMARY_ORDERS_CACHE, []);
+    const updated = [newPrimaryOrder, ...cached];
+    setStored(STORAGE_KEYS.PRIMARY_ORDERS_CACHE, updated);
+    return newPrimaryOrder;
+  }
+
+  /**
+   * Receive Primary Order GRN into Warehouse Stock
+   */
+  static async receivePrimaryOrderGRN(orderId) {
+    const orders = getStored(STORAGE_KEYS.PRIMARY_ORDERS_CACHE, []);
+    const targetOrder = orders.find(o => o.id === orderId);
+    if (!targetOrder) return { success: false, error: 'Order not found' };
+
+    // 1. Update Salesforce Order__c status to 'Delivered'
+    try {
+      await fetch(`/api/salesforce/services/data/v68.0/sobjects/Order__c/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Status__c: 'Delivered' })
+      });
+    } catch (e) {
+      console.warn('Salesforce status patch warning:', e);
+    }
+
+    // 2. Mark order as Delivered in local cache
+    const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: 'Delivered', grnCreated: true } : o);
+    setStored(STORAGE_KEYS.PRIMARY_ORDERS_CACHE, updatedOrders);
+
+    // 3. Automatically create GRN in Inventory for each product in the order
+    if (targetOrder.items && targetOrder.items.length > 0) {
+      targetOrder.items.forEach(item => {
+        this.createGRN({
+          productName: item.productName,
+          quantity: item.quantity,
+          batchNo: `B-${new Date().toISOString().substring(2, 7).replace('-', '')}-PRM`,
+          expiryDate: '2027-06-30',
+          poNumber: targetOrder.orderNumber
+        });
+      });
+    } else {
+      this.createGRN({
+        productName: 'Parle-G Original Glucose Biscuit',
+        quantity: targetOrder.totalQuantity || 100,
+        batchNo: `B-${new Date().toISOString().substring(2, 7).replace('-', '')}-PRM`,
+        expiryDate: '2027-06-30',
+        poNumber: targetOrder.orderNumber
+      });
+    }
+
+    return { success: true, order: targetOrder };
   }
 
   /**

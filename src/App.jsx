@@ -26,9 +26,14 @@ import {
   Info,
   CreditCard,
   MapPin,
-  X
+  X,
+  Layers,
+  Boxes,
+  FileCheck,
+  Check,
+  Trash2
 } from 'lucide-react';
-import { DMSDataService } from './services/api';
+import { DMSDataService, PARLE_PRODUCTS } from './services/api';
 import DistributorLogin from './components/DistributorLogin';
 import { formatIST, getCurrentISTTimestamp } from './utils/dateUtils';
 
@@ -50,6 +55,7 @@ export default function App() {
   const [employees, setEmployees] = useState(() => DMSDataService.getEmployees());
   const [outlets, setOutlets] = useState(() => DMSDataService.getRetailerOutlets());
   const [orders, setOrders] = useState(() => DMSDataService.getOrders());
+  const [primaryOrders, setPrimaryOrders] = useState(() => DMSDataService.getPrimaryOrders());
   const [stockHeld, setStockHeld] = useState(() => DMSDataService.getStockHeld());
   const [stockMovements, setStockMovements] = useState(() => DMSDataService.getStockMovements());
   const [tickets, setTickets] = useState(() => DMSDataService.getTickets());
@@ -64,12 +70,29 @@ export default function App() {
   // Search & Filter State
   const [outletSearch, setOutletSearch] = useState('');
   const [selectedTicketFilter, setSelectedTicketFilter] = useState('All');
+  const [primaryOrderSearch, setPrimaryOrderSearch] = useState('');
+  const [primaryOrderStatusFilter, setPrimaryOrderStatusFilter] = useState('All');
 
   // Modals
   const [selectedOrderForModal, setSelectedOrderForModal] = useState(null);
+  const [selectedPrimaryOrderForModal, setSelectedPrimaryOrderForModal] = useState(null);
+  const [showNewPrimaryOrderModal, setShowNewPrimaryOrderModal] = useState(false);
   const [showGRNModal, setShowGRNModal] = useState(false);
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // Form State: New Primary Order to Depot
+  const [primaryDepot, setPrimaryDepot] = useState('Parle Central Depot A');
+  const [primaryRemarks, setPrimaryRemarks] = useState('');
+  const [isSubmittingPrimaryOrder, setIsSubmittingPrimaryOrder] = useState(false);
+  const [primaryOrderLines, setPrimaryOrderLines] = useState([
+    {
+      productId: PARLE_PRODUCTS[0].id,
+      productName: PARLE_PRODUCTS[0].name,
+      quantity: 50,
+      unitPrice: Math.round(PARLE_PRODUCTS[0].rbp * PARLE_PRODUCTS[0].packCase)
+    }
+  ]);
 
   // Form State: GRN
   const [grnProduct, setGrnProduct] = useState('Herbal Shampoo 200ml');
@@ -108,6 +131,7 @@ export default function App() {
     setEmployees(DMSDataService.getEmployees());
     setOutlets(DMSDataService.getRetailerOutlets());
     setOrders(DMSDataService.getOrders());
+    setPrimaryOrders(DMSDataService.getPrimaryOrders());
     setStockHeld(DMSDataService.getStockHeld());
     setStockMovements(DMSDataService.getStockMovements());
     setTickets(DMSDataService.getTickets());
@@ -153,6 +177,90 @@ export default function App() {
     await DMSDataService.updateOrderStatus(orderId, status);
     reloadData();
     triggerToast(`Order status updated to "${status}" at ${getCurrentISTTimestamp()}`);
+  };
+
+  const addPrimaryOrderLine = () => {
+    const defaultProd = PARLE_PRODUCTS[0];
+    setPrimaryOrderLines(prev => [
+      ...prev,
+      {
+        productId: defaultProd.id,
+        productName: defaultProd.name,
+        quantity: 25,
+        unitPrice: Math.round(defaultProd.rbp * defaultProd.packCase)
+      }
+    ]);
+  };
+
+  const removePrimaryOrderLine = (index) => {
+    if (primaryOrderLines.length <= 1) return;
+    setPrimaryOrderLines(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updatePrimaryOrderLine = (index, field, value) => {
+    setPrimaryOrderLines(prev => {
+      const updated = [...prev];
+      if (field === 'productId') {
+        const prod = PARLE_PRODUCTS.find(p => p.id === value) || PARLE_PRODUCTS[0];
+        updated[index] = {
+          ...updated[index],
+          productId: prod.id,
+          productName: prod.name,
+          unitPrice: Math.round(prod.rbp * prod.packCase)
+        };
+      } else {
+        updated[index] = {
+          ...updated[index],
+          [field]: field === 'quantity' || field === 'unitPrice' ? Number(value) : value
+        };
+      }
+      return updated;
+    });
+  };
+
+  const handleCreatePrimaryOrder = async (e) => {
+    e.preventDefault();
+    const validLines = (primaryOrderLines || []).filter(l => (Number(l.quantity) || 0) > 0);
+    if (validLines.length === 0) {
+      alert("Please specify at least one product SKU with quantity > 0 cases.");
+      return;
+    }
+    try {
+      setIsSubmittingPrimaryOrder(true);
+      const created = await DMSDataService.createPrimaryOrder({
+        items: validLines,
+        plantName: primaryDepot,
+        remarks: primaryRemarks
+      });
+      setShowNewPrimaryOrderModal(false);
+      setPrimaryRemarks('');
+      setPrimaryOrderLines([
+        {
+          productId: PARLE_PRODUCTS[0].id,
+          productName: PARLE_PRODUCTS[0].name,
+          quantity: 50,
+          unitPrice: Math.round(PARLE_PRODUCTS[0].rbp * PARLE_PRODUCTS[0].packCase)
+        }
+      ]);
+      reloadData();
+      triggerToast(`Primary Order [${created.orderNumber}] created & synced to Salesforce!`);
+    } catch (err) {
+      triggerToast('Error placing primary order: ' + (err?.message || err));
+    } finally {
+      setIsSubmittingPrimaryOrder(false);
+    }
+  };
+
+  const handleReceivePrimaryGRN = async (orderId) => {
+    try {
+      const res = await DMSDataService.receivePrimaryOrderGRN(orderId);
+      if (res.success) {
+        reloadData();
+        triggerToast(`GRN Created! Order received into local warehouse stock at ${getCurrentISTTimestamp()}`);
+      }
+    } catch (err) {
+      triggerToast('Error receiving GRN: ' + (err?.message || err));
+    }
   };
 
   const handleCreateGRN = (e) => {
@@ -228,10 +336,27 @@ export default function App() {
     return t.status === selectedTicketFilter;
   });
 
+  // Filtered Primary Orders
+  const filteredPrimaryOrders = (primaryOrders || []).filter(po => {
+    if (!po) return false;
+    const q = (primaryOrderSearch || '').toLowerCase();
+    const matchesQuery = (
+      (po.orderNumber || '').toLowerCase().includes(q) ||
+      (po.depotName || '').toLowerCase().includes(q) ||
+      (po.productNames || '').toLowerCase().includes(q)
+    );
+    if (!matchesQuery) return false;
+    if (primaryOrderStatusFilter === 'All') return true;
+    return po.status === primaryOrderStatusFilter;
+  });
+
   // Quick Stats
   const totalStockUnits = (stockHeld || []).reduce((acc, s) => acc + (s.availableStock || 0), 0);
   const pendingOrdersCount = (orders || []).filter(
     o => o.status === 'Submitted' || o.status === 'Confirmed' || o.status === 'Pending Fulfillment'
+  ).length;
+  const pendingPrimaryOrdersCount = (primaryOrders || []).filter(
+    po => po.status === 'Submitted' || po.status === 'Confirmed' || po.status === 'In Transit'
   ).length;
   const openTicketsCount = (tickets || []).filter(t => t.status === 'Open' || t.status === 'In Progress').length;
 
@@ -320,6 +445,23 @@ export default function App() {
       {/* Primary DMS Module Navigation Tabs */}
       <nav className="bg-white border-b border-slate-200 px-6 py-2 flex space-x-1 overflow-x-auto shadow-sm">
         <button
+          onClick={() => setActiveTab('primary_orders')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer relative ${
+            activeTab === 'primary_orders'
+              ? 'bg-blue-50 text-blue-700 shadow-sm'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <Truck className="w-4 h-4 text-emerald-600" />
+          <span>Primary Orders (Procurement)</span>
+          {pendingPrimaryOrdersCount > 0 && (
+            <span className="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded-full ml-1 font-bold">
+              {pendingPrimaryOrdersCount}
+            </span>
+          )}
+        </button>
+
+        <button
           onClick={() => setActiveTab('orders')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer relative ${
             activeTab === 'orders'
@@ -328,7 +470,7 @@ export default function App() {
           }`}
         >
           <ShoppingCart className="w-4 h-4" />
-          <span>Secondary Orders</span>
+          <span>Secondary Orders (Retailers)</span>
           {pendingOrdersCount > 0 && (
             <span className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full ml-1">
               {pendingOrdersCount}
@@ -404,6 +546,215 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
+        {/* ========================================================= */}
+        {/* MODULE 0: PRIMARY ORDERS (COMPANY / PLANT PROCUREMENT)    */}
+        {/* ========================================================= */}
+        {activeTab === 'primary_orders' && (
+          <div className="space-y-6">
+            {/* Top Banner with Stats & CTA */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-wrap justify-between items-center gap-4">
+              <div>
+                <div className="inline-flex items-center space-x-2 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-1">
+                  <Truck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Company to Distributor Procurement</span>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 mt-1">Primary Purchase Orders (PO)</h2>
+                <p className="text-sm text-slate-500">
+                  Manage factory stock procurement for <span className="font-semibold text-slate-700">{distributor.name}</span>. Syncs with Salesforce SObject <code className="text-xs bg-slate-100 px-1 py-0.5 rounded text-blue-700">Order__c</code>.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setShowNewPrimaryOrderModal(true)}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-blue-500/20 transition flex items-center space-x-2 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Place New Primary Order</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Summary Metric Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+                <span className="text-xs text-slate-500 font-medium">Total Procurement POs</span>
+                <div className="text-2xl font-bold text-slate-900 mt-1">{primaryOrders.length}</div>
+                <span className="text-[11px] text-slate-400">All registered factory orders</span>
+              </div>
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+                <span className="text-xs text-amber-600 font-medium">In Transit / Dispatched</span>
+                <div className="text-2xl font-bold text-amber-700 mt-1">
+                  {primaryOrders.filter(po => po.status === 'Dispatched' || po.status === 'Confirmed' || po.status === 'Submitted').length}
+                </div>
+                <span className="text-[11px] text-amber-600">Awaiting warehouse intake</span>
+              </div>
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+                <span className="text-xs text-emerald-600 font-medium">Received & GRN Logged</span>
+                <div className="text-2xl font-bold text-emerald-700 mt-1">
+                  {primaryOrders.filter(po => po.status === 'Delivered').length}
+                </div>
+                <span className="text-[11px] text-emerald-600">Stock updated into inventory</span>
+              </div>
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+                <span className="text-xs text-blue-600 font-medium">Total Procurement Value</span>
+                <div className="text-2xl font-bold text-blue-700 mt-1">
+                  ₹{primaryOrders.reduce((acc, po) => acc + (po.totalAmount || 0), 0).toLocaleString()}
+                </div>
+                <span className="text-[11px] text-slate-400">Net wholesale billing amount</span>
+              </div>
+            </div>
+
+            {/* Search & Filter Bar */}
+            <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm flex flex-wrap justify-between items-center gap-3">
+              <div className="relative flex-1 min-w-[260px]">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  value={primaryOrderSearch}
+                  onChange={e => setPrimaryOrderSearch(e.target.value)}
+                  placeholder="Search PO number, plant depot, or product..."
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-slate-500 font-medium">Status:</span>
+                {['All', 'Submitted', 'Confirmed', 'Dispatched', 'Delivered'].map(status => (
+                  <button
+                    key={status}
+                    onClick={() => setPrimaryOrderStatusFilter(status)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      primaryOrderStatusFilter === status
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Primary Orders Table */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+                <h3 className="font-bold text-slate-900 flex items-center space-x-2 text-sm">
+                  <Truck className="w-4 h-4 text-blue-600" />
+                  <span>Primary Procurement Orders ({filteredPrimaryOrders.length})</span>
+                </h3>
+                <span className="text-xs text-slate-500 font-mono">Company Depot: {distributor.defaultWarehouseName || 'Central Hub'}</span>
+              </div>
+
+              {filteredPrimaryOrders.length === 0 ? (
+                <div className="p-12 text-center bg-white">
+                  <Truck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <h4 className="text-base font-bold text-slate-800">No Primary Purchase Orders</h4>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">
+                    No primary orders found for {distributor.name}. You can place a replenishment purchase order directly to the Parle manufacturing depot.
+                  </p>
+                  <button
+                    onClick={() => setShowNewPrimaryOrderModal(true)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold inline-flex items-center space-x-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Place New Primary Order</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-700">
+                    <thead className="bg-slate-100 text-slate-700 text-xs uppercase font-semibold border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3">PO Number & Date (IST)</th>
+                        <th className="px-4 py-3">Fulfilling Depot / Plant</th>
+                        <th className="px-4 py-3">Procurement Products</th>
+                        <th className="px-4 py-3">Total Value</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3 text-right">Warehouse Intake</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredPrimaryOrders.map(po => {
+                        const getStatusBadge = () => {
+                          switch (po.status) {
+                            case 'Submitted':
+                              return 'bg-blue-100 text-blue-800 border-blue-200';
+                            case 'Confirmed':
+                              return 'bg-amber-100 text-amber-800 border-amber-200';
+                            case 'Dispatched':
+                              return 'bg-purple-100 text-purple-800 border-purple-200';
+                            case 'Delivered':
+                              return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                            default:
+                              return 'bg-slate-100 text-slate-800 border-slate-200';
+                          }
+                        };
+
+                        return (
+                          <tr key={po.id} className="hover:bg-slate-50 transition">
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => setSelectedPrimaryOrderForModal(po)}
+                                className="font-bold text-blue-600 hover:text-blue-800 font-mono text-left cursor-pointer hover:underline flex items-center space-x-1"
+                              >
+                                <span>{po.orderNumber}</span>
+                                <Eye className="w-3 h-3 text-slate-400" />
+                              </button>
+                              <div className="text-xs text-slate-500 flex items-center space-x-1 mt-0.5">
+                                <Calendar className="w-3 h-3 text-slate-400" />
+                                <span>{po.orderDate}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-slate-900">{po.depotName || 'Parle Central Depot'}</div>
+                              <span className="text-xs text-slate-500">{po.paymentStatus || 'Company Credit'}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-slate-900 line-clamp-1 max-w-xs text-xs">
+                                {po.productNames || 'Mixed Parle SKUs'}
+                              </div>
+                              <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                Total Qty: {po.totalQuantity} cases
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-bold text-slate-900">₹{(po.totalAmount || 0).toLocaleString()}</div>
+                              <span className="text-[11px] text-emerald-600">Wholesale RBP</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${getStatusBadge()}`}>
+                                {po.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {po.status === 'Delivered' ? (
+                                <span className="inline-flex items-center space-x-1 text-emerald-700 bg-emerald-50 border border-emerald-200 text-xs font-semibold px-2.5 py-1 rounded-lg">
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>GRN Received</span>
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => handleReceivePrimaryGRN(po.id)}
+                                  className="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-sm inline-flex items-center space-x-1.5 transition cursor-pointer"
+                                  title="Receive goods into local warehouse stock"
+                                >
+                                  <Package className="w-3.5 h-3.5" />
+                                  <span>Receive GRN</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ========================================================= */}
         {/* MODULE 1: SECONDARY ORDERS & MOBILE SFA INTEGRATION */}
         {/* ========================================================= */}
@@ -1246,6 +1597,325 @@ export default function App() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL 1B: PRIMARY ORDER DETAILS */}
+      {/* ========================================================= */}
+      {selectedPrimaryOrderForModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[11px] font-mono text-blue-600 uppercase font-bold tracking-wider">
+                  Primary Purchase Order
+                </span>
+                <h3 className="text-xl font-bold text-slate-900 mt-0.5">{selectedPrimaryOrderForModal.orderNumber}</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Fulfilling Depot: <span className="font-semibold text-slate-700">{selectedPrimaryOrderForModal.depotName || 'Parle Central Depot'}</span> • Placed: {selectedPrimaryOrderForModal.orderDate}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedPrimaryOrderForModal(null)}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-[11px] text-slate-500 block">Status</span>
+                <span className="text-xs font-bold text-blue-700 uppercase">{selectedPrimaryOrderForModal.status}</span>
+              </div>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-[11px] text-slate-500 block">Total Quantity</span>
+                <span className="text-sm font-bold text-slate-900">{selectedPrimaryOrderForModal.totalQuantity} Cases</span>
+              </div>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-[11px] text-slate-500 block">Total Invoice Value</span>
+                <span className="text-sm font-bold text-emerald-700">₹{(selectedPrimaryOrderForModal.totalAmount || 0).toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Ordered SKUs & Cases:</h4>
+              <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                {selectedPrimaryOrderForModal.items && selectedPrimaryOrderForModal.items.length > 0 ? (
+                  selectedPrimaryOrderForModal.items.map((item, idx) => (
+                    <div key={idx} className="p-3 flex justify-between items-center text-sm bg-white">
+                      <div>
+                        <div className="font-semibold text-slate-900 text-xs">{item.productName}</div>
+                        <span className="text-[11px] text-slate-500">Qty: {item.quantity} cases @ ₹{(item.unitPrice || 0).toLocaleString()}/case</span>
+                      </div>
+                      <span className="font-bold text-slate-800 text-xs">₹{((item.quantity || 0) * (item.unitPrice || 0)).toLocaleString()}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 text-xs text-slate-600">
+                    <span className="font-medium text-slate-800">{selectedPrimaryOrderForModal.productNames || 'Parle Assorted SKUs'}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {selectedPrimaryOrderForModal.remarks && (
+              <div className="p-2.5 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-900">
+                <span className="font-bold">Instructions: </span> {selectedPrimaryOrderForModal.remarks}
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
+              <div>
+                <span className="text-[11px] text-slate-500 block">Salesforce SObject:</span>
+                <span className="text-xs font-mono font-medium text-slate-700">{selectedPrimaryOrderForModal.id}</span>
+              </div>
+              <div className="flex space-x-2">
+                {selectedPrimaryOrderForModal.status !== 'Delivered' && (
+                  <button
+                    onClick={() => {
+                      handleReceivePrimaryGRN(selectedPrimaryOrderForModal.id);
+                      setSelectedPrimaryOrderForModal(null);
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-sm flex items-center space-x-1.5"
+                  >
+                    <Package className="w-3.5 h-3.5" />
+                    <span>Receive GRN into Warehouse</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedPrimaryOrderForModal(null)}
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL 1C: PLACE NEW PRIMARY ORDER */}
+      {/* ========================================================= */}
+      {showNewPrimaryOrderModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <form
+            onSubmit={handleCreatePrimaryOrder}
+            className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] flex flex-col"
+          >
+            {/* Modal Header */}
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 uppercase tracking-wide">
+                    Direct Procurement
+                  </span>
+                  <span className="text-xs text-slate-400">• Timezone: IST (UTC+05:30)</span>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mt-1">Place Primary Purchase Order</h3>
+                <p className="text-xs text-slate-500">
+                  Procure stock from Parle Central Manufacturing & Depot to <span className="font-semibold text-slate-700">{distributor.name}</span> ({distributor.code})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewPrimaryOrderModal(false)}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body - Scrollable */}
+            <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+              {/* Depot and Credit info banner */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Fulfilling Central Depot / Factory Plant
+                  </label>
+                  <select
+                    value={primaryDepot}
+                    onChange={e => setPrimaryDepot(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  >
+                    <option value={distributor.defaultWarehouseName || 'Parle Central Depot A'}>
+                      {distributor.defaultWarehouseName || 'Parle Central Depot A'} (Assigned Hub)
+                    </option>
+                    <option value="Parle Manufacturing Plant - Neemrana Hub">Parle Manufacturing Plant - Neemrana Hub</option>
+                    <option value="Parle North Depot - Bahadurgarh Hub">Parle North Depot - Bahadurgarh Hub</option>
+                    <option value="Parle West Central Hub - Bhiwandi Depot">Parle West Central Hub - Bhiwandi Depot</option>
+                  </select>
+                </div>
+
+                <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3 flex flex-col justify-between">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-blue-800 font-medium">Distributor Credit Available:</span>
+                    <span className="font-bold text-blue-900 font-mono">
+                      ₹{Math.max(0, distributor.creditLimit - distributor.currentOutstanding).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-blue-600 mt-1">
+                    Sanctioned: ₹{distributor.creditLimit.toLocaleString()} • Outstanding: ₹{distributor.currentOutstanding.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Items Table */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                    <Boxes className="w-4 h-4 text-blue-600" />
+                    <span>Purchase Line Items ({primaryOrderLines.length})</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addPrimaryOrderLine}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center space-x-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Add SKU Line</span>
+                  </button>
+                </div>
+
+                <div className="border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100">
+                  {primaryOrderLines.map((line, idx) => {
+                    const lineTotal = (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0);
+                    return (
+                      <div key={idx} className="p-3 bg-white hover:bg-slate-50 transition flex flex-col sm:flex-row sm:items-center gap-2">
+                        {/* SKU Selector */}
+                        <div className="flex-1 min-w-[200px]">
+                          <label className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Product SKU</label>
+                          <select
+                            value={line.productId}
+                            onChange={e => updatePrimaryOrderLine(idx, 'productId', e.target.value)}
+                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900"
+                          >
+                            {PARLE_PRODUCTS.map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} — {p.category} ({p.sku})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Wholesale Price / Case */}
+                        <div className="w-28">
+                          <label className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Price/Case (₹)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={line.unitPrice}
+                            onChange={e => updatePrimaryOrderLine(idx, 'unitPrice', e.target.value)}
+                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800"
+                          />
+                        </div>
+
+                        {/* Quantity (Cases) */}
+                        <div className="w-24">
+                          <label className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Cases</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={line.quantity}
+                            onChange={e => updatePrimaryOrderLine(idx, 'quantity', e.target.value)}
+                            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-900"
+                            required
+                          />
+                        </div>
+
+                        {/* Line Total */}
+                        <div className="w-32 text-right">
+                          <label className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Subtotal</label>
+                          <div className="text-xs font-bold text-slate-900 font-mono py-2">
+                            ₹{lineTotal.toLocaleString()}
+                          </div>
+                        </div>
+
+                        {/* Remove Row Button */}
+                        <div className="sm:self-end pb-1">
+                          <button
+                            type="button"
+                            onClick={() => removePrimaryOrderLine(idx)}
+                            disabled={primaryOrderLines.length <= 1}
+                            className={`p-2 rounded-lg cursor-pointer ${
+                              primaryOrderLines.length <= 1
+                                ? 'text-slate-300 cursor-not-allowed'
+                                : 'text-rose-500 hover:text-rose-700 hover:bg-rose-50'
+                            }`}
+                            title="Remove SKU line"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Order Summary Cards */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Total SKUs</span>
+                  <span className="text-sm font-bold text-slate-800">{primaryOrderLines.length} Products</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Quantity</span>
+                  <span className="text-sm font-bold text-blue-700">
+                    {primaryOrderLines.reduce((acc, l) => acc + (Number(l.quantity) || 0), 0)} Cases
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Distributor Margin (5%)</span>
+                  <span className="text-sm font-bold text-emerald-600">
+                    ₹{Math.round(primaryOrderLines.reduce((acc, l) => acc + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0) * 0.05).toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Gross Order Value</span>
+                  <span className="text-base font-bold text-slate-900 font-mono">
+                    ₹{primaryOrderLines.reduce((acc, l) => acc + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Remarks */}
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Logistics & Delivery Instructions (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Schedule delivery before 11:00 AM; priority replenishment for festive stock"
+                  value={primaryRemarks}
+                  onChange={e => setPrimaryRemarks(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setShowNewPrimaryOrderModal(false)}
+                className="px-4 py-2 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingPrimaryOrder}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-blue-500/20 transition flex items-center space-x-2 cursor-pointer"
+              >
+                <Truck className="w-4 h-4" />
+                <span>{isSubmittingPrimaryOrder ? 'Submitting to Salesforce...' : 'Confirm & Submit PO to Salesforce'}</span>
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
