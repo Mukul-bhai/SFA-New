@@ -1,0 +1,641 @@
+<template>
+    <!-- TOP BRAND HEADER -->
+    <header class="dms-header">
+        <div class="brand-wrapper">
+            <div class="brand-logo-badge">
+                <lightning-icon icon-name="standard:sales_cadence" size="small" variant="inverse"></lightning-icon>
+                <span>MAYORA DMS</span>
+            </div>
+            <span class="brand-sub">Enterprise Distributor Management System</span>
+        </div>
+
+        <div class="header-right">
+            <!-- DISTRIBUTOR SWITCHER -->
+            <div class="distributor-pill">
+                <lightning-icon icon-name="standard:account" size="x-small"></lightning-icon>
+                <select class="slds-select" onchange={handleDistributorChange} style="border:none; background:transparent; font-weight:bold; color:#9B1B22; outline:none; cursor:pointer;">
+                    <template for:each={distributors} for:item="dist">
+                        <option key={dist.Id} value={dist.Id} selected={dist.isSelected}>{dist.Name} ({dist.Distributor_Code__c})</option>
+                    </template>
+                </select>
+            </div>
+
+            <!-- FINANCIAL LIMIT BADGES -->
+            <div class="credit-badges">
+                <div class="badge-box">
+                    <span class="badge-label">Credit Limit</span>
+                    <span class="badge-val">₹{formattedCreditLimit}</span>
+                </div>
+                <div class="badge-box">
+                    <span class="badge-label">Outstanding</span>
+                    <span class="badge-val">₹{formattedOutstanding}</span>
+                </div>
+                <div class="badge-box">
+                    <span class="badge-label">Available Credit</span>
+                    <span class="badge-val available">₹{formattedAvailableCredit}</span>
+                </div>
+            </div>
+
+            <!-- USER AVATAR -->
+            <div class="user-profile">
+                <div class="user-avatar">MY</div>
+                <span>Mukul Yadav</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- NAVIGATION RIBBON (MATCHING MAYORA INDIA RED RIBBON) -->
+    <nav class="dms-nav-ribbon">
+        <div class={navHomeClass} onclick={handleNavClick} data-tab="home">
+            <lightning-icon icon-name="utility:home" size="x-small" variant="inverse"></lightning-icon>
+            Home
+        </div>
+        <div class={navProductsClass} onclick={handleNavClick} data-tab="products">
+            <lightning-icon icon-name="utility:package" size="x-small" variant="inverse"></lightning-icon>
+            Products
+        </div>
+        <div class={navOrdersClass} onclick={handleNavClick} data-tab="orders">
+            <lightning-icon icon-name="utility:orders" size="x-small" variant="inverse"></lightning-icon>
+            Orders
+        </div>
+        <div class={navInvoicesClass} onclick={handleNavClick} data-tab="invoices">
+            <lightning-icon icon-name="utility:file" size="x-small" variant="inverse"></lightning-icon>
+            Invoices
+        </div>
+        <div class={navGrnClass} onclick={handleNavClick} data-tab="grn">
+            <lightning-icon icon-name="utility:inbound_call" size="x-small" variant="inverse"></lightning-icon>
+            GRN
+        </div>
+        <div class={navLedgerClass} onclick={handleNavClick} data-tab="ledger">
+            <lightning-icon icon-name="utility:money" size="x-small" variant="inverse"></lightning-icon>
+            Ledger
+        </div>
+        <div class={navInventoryClass} onclick={handleNavClick} data-tab="inventory">
+            <lightning-icon icon-name="utility:database" size="x-small" variant="inverse"></lightning-icon>
+            Inventory
+        </div>
+    </nav>
+
+    <!-- MAIN BODY -->
+    <main class="dms-body">
+        
+        <!-- SPINNER -->
+        <template if:true={isLoading}>
+            <lightning-spinner alternative-text="Loading..." size="medium"></lightning-spinner>
+        </template>
+
+        <!-- ========================================== -->
+        <!-- TAB 1: ORDERS (PRIMARY & SECONDARY ORDERS) -->
+        <!-- ========================================== -->
+        <template if:true={isOrdersTab}>
+            
+            <!-- ORDER SUB-TABS SELECTOR -->
+            <div class="order-subtabs-bar">
+                <div class="tab-toggle-group">
+                    <button class={primarySubtabClass} onclick={handleOrderSubtabClick} data-subtab="primary">
+                        <lightning-icon icon-name="utility:cart" size="x-small"></lightning-icon>
+                        Primary Orders
+                        <span class="badge-count">{primaryOrdersCount}</span>
+                    </button>
+                    <button class={secondarySubtabClass} onclick={handleOrderSubtabClick} data-subtab="secondary">
+                        <lightning-icon icon-name="utility:retail_execution" size="x-small"></lightning-icon>
+                        Secondary Orders
+                        <span class="badge-count">{secondaryOrdersCount}</span>
+                    </button>
+                </div>
+
+                <div class="action-bar-right">
+                    <!-- SINGLE TIME MULTIPLE ORDER BUTTON FOR PRIMARY ORDER -->
+                    <template if:true={isPrimaryOrders}>
+                        <button class="btn-primary" onclick={openBulkOrderModal}>
+                            <lightning-icon icon-name="utility:add" size="x-small" variant="inverse"></lightning-icon>
+                            + New Primary Order (Bulk Multi-Order)
+                        </button>
+                    </template>
+                    <button class="btn-secondary" onclick={refreshData}>
+                        <lightning-icon icon-name="utility:refresh" size="x-small"></lightning-icon>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- PRIMARY ORDERS CONTENT -->
+            <template if:true={isPrimaryOrders}>
+                <!-- PRIMARY ORDERS KPI CARDS -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Total Primary Orders Placed</div>
+                        <div class="kpi-value">{primaryOrdersCount}</div>
+                        <div class="kpi-sub">Direct to Manufacturing Plant</div>
+                    </div>
+                    <div class="kpi-card green">
+                        <div class="kpi-title">Total Primary Value</div>
+                        <div class="kpi-value">₹{formattedPrimaryTotal}</div>
+                        <div class="kpi-sub">Gross Billed to Distributor</div>
+                    </div>
+                    <div class="kpi-card amber">
+                        <div class="kpi-title">In-Processing / Submitted</div>
+                        <div class="kpi-value">{pendingPrimaryCount} Orders</div>
+                        <div class="kpi-sub">Awaiting Plant Dispatch</div>
+                    </div>
+                    <div class="kpi-card blue">
+                        <div class="kpi-title">Available Credit Headroom</div>
+                        <div class="kpi-value">₹{formattedAvailableCredit}</div>
+                        <div class="kpi-sub">Credit Limit ₹{formattedCreditLimit}</div>
+                    </div>
+                </div>
+
+                <!-- PRIMARY ORDERS DATA TABLE -->
+                <div class="table-container">
+                    <div class="table-header-bar">
+                        <input type="text" class="search-input" placeholder="Search primary order # or status..." onkeyup={handlePrimarySearch} />
+                        <span style="font-size:12px; color:#64748B;">Showing {filteredPrimaryOrders.length} Primary Orders</span>
+                    </div>
+
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Order Number</th>
+                                <th>Order Date</th>
+                                <th>PO Number / Ref</th>
+                                <th>Products</th>
+                                <th>Total Units</th>
+                                <th>Order Total (₹)</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={filteredPrimaryOrders} for:item="ord">
+                                <tr key={ord.id}>
+                                    <td>
+                                        <strong style="color:#9B1B22;">{ord.name}</strong>
+                                    </td>
+                                    <td>{ord.orderDate}</td>
+                                    <td>
+                                        <template if:true={ord.poNumber}>
+                                            <span class="tag-badge">{ord.poNumber}</span>
+                                        </template>
+                                        <template if:false={ord.poNumber}>
+                                            <span style="color:#94A3B8;">-</span>
+                                        </template>
+                                    </td>
+                                    <td><strong>{ord.itemsCount} SKUs</strong></td>
+                                    <td>{ord.totalQuantity} units</td>
+                                    <td><strong style="color:#1E293B;">₹{ord.totalAmount}</strong></td>
+                                    <td>
+                                        <span class={ord.statusClass}>{ord.status}</span>
+                                    </td>
+                                    <td>
+                                        <button class="btn-secondary" onclick={viewOrderDetails} data-id={ord.id} style="padding:4px 10px; font-size:11px;">
+                                            View Lines
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template if:true={isPrimaryEmpty}>
+                                <tr>
+                                    <td colspan="8" style="text-align:center; padding:32px; color:#64748B;">
+                                        No Primary Orders found. Click <strong>"+ New Primary Order"</strong> above to place your first bulk order!
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+
+            <!-- SECONDARY ORDERS CONTENT -->
+            <template if:true={isSecondaryOrders}>
+                <!-- SECONDARY ORDERS KPI CARDS -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Total Secondary Orders</div>
+                        <div class="kpi-value">{secondaryOrdersCount}</div>
+                        <div class="kpi-sub">Booked from Retailers & Outlets</div>
+                    </div>
+                    <div class="kpi-card green">
+                        <div class="kpi-title">Secondary Revenue</div>
+                        <div class="kpi-value">₹{formattedSecondaryTotal}</div>
+                        <div class="kpi-sub">Retail Field Bookings</div>
+                    </div>
+                    <div class="kpi-card amber">
+                        <div class="kpi-title">Pending Fulfillment</div>
+                        <div class="kpi-value">{pendingSecondaryCount} Orders</div>
+                        <div class="kpi-sub">Ready for Invoicing / Delivery</div>
+                    </div>
+                    <div class="kpi-card blue">
+                        <div class="kpi-title">Fulfillment Rate</div>
+                        <div class="kpi-value">94.2%</div>
+                        <div class="kpi-sub">Same-Day Dispatch SLA</div>
+                    </div>
+                </div>
+
+                <!-- SECONDARY ORDERS DATA TABLE -->
+                <div class="table-container">
+                    <div class="table-header-bar">
+                        <input type="text" class="search-input" placeholder="Search retailer, order # or beat..." onkeyup={handleSecondarySearch} />
+                        <span style="font-size:12px; color:#64748B;">Showing {filteredSecondaryOrders.length} Secondary Orders</span>
+                    </div>
+
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Order Number</th>
+                                <th>Order Date</th>
+                                <th>Retailer / Customer</th>
+                                <th>Beat / Route</th>
+                                <th>Sales Rep</th>
+                                <th>Order Value</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={filteredSecondaryOrders} for:item="ord">
+                                <tr key={ord.id}>
+                                    <td>
+                                        <strong style="color:#2563EB;">{ord.name}</strong>
+                                    </td>
+                                    <td>{ord.orderDate}</td>
+                                    <td><strong>{ord.customerName}</strong></td>
+                                    <td><span class="tag-badge">{ord.beatName}</span></td>
+                                    <td>{ord.salesExecutiveName}</td>
+                                    <td><strong style="color:#1E293B;">₹{ord.totalAmount}</strong></td>
+                                    <td>
+                                        <span class={ord.statusClass}>{ord.status}</span>
+                                    </td>
+                                    <td>
+                                        <div style="display:flex; gap:6px;">
+                                            <button class="btn-secondary" onclick={viewOrderDetails} data-id={ord.id} style="padding:4px 8px; font-size:11px;">
+                                                Items
+                                            </button>
+                                            <template if:true={ord.canApprove}>
+                                                <button class="btn-primary" onclick={handleApproveOrder} data-id={ord.id} style="padding:4px 8px; font-size:11px; background:#16A34A;">
+                                                    Approve
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template if:true={isSecondaryEmpty}>
+                                <tr>
+                                    <td colspan="8" style="text-align:center; padding:32px; color:#64748B;">
+                                        No Secondary Orders found for this distributor.
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+
+        </template>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: PRODUCTS CATALOG (IMAGE 1 REPLICA)  -->
+        <!-- ========================================== -->
+        <template if:true={isProductsTab}>
+            <div class="table-container">
+                <div class="table-header-bar">
+                    <div>
+                        <h2 style="font-size:16px; font-weight:800; color:#1E293B;">Product Master Catalog</h2>
+                        <span style="font-size:12px; color:#64748B;">Active price lists, pack sizes, and available factory stock</span>
+                    </div>
+                    <div style="display:flex; gap:12px;">
+                        <input type="text" class="search-input" placeholder="Search by SKU code or product name..." onkeyup={handleProductSearch} />
+                        <button class="btn-primary" onclick={openBulkOrderModal}>
+                            <lightning-icon icon-name="utility:cart" size="x-small" variant="inverse"></lightning-icon>
+                            Order Selected Products
+                        </button>
+                    </div>
+                </div>
+
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Product Description</th>
+                            <th>Brand</th>
+                            <th>Sub Brand</th>
+                            <th>Category / Pack</th>
+                            <th>MRP (₹)</th>
+                            <th>Distributor Rate (₹)</th>
+                            <th>Pack Size</th>
+                            <th>Available Stock</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template for:each={filteredProducts} for:item="p">
+                            <tr key={p.id}>
+                                <td><strong>{p.code}</strong></td>
+                                <td>
+                                    <strong style="color:#1E293B; display:block;">{p.name}</strong>
+                                </td>
+                                <td><span class="tag-badge" style="background:#FEF2F2; color:#9B1B22;">{p.brand}</span></td>
+                                <td>{p.subBrand}</td>
+                                <td>{p.category} • {p.packSize}</td>
+                                <td>₹{p.mrp}</td>
+                                <td><strong style="color:#16A34A;">₹{p.unitPrice}</strong></td>
+                                <td>{p.packSize}</td>
+                                <td>
+                                    <span style="font-weight:600; color:#2563EB;">{p.availableStock} units</span>
+                                </td>
+                                <td>
+                                    <button class="btn-secondary" onclick={openBulkOrderModal} style="padding:4px 8px; font-size:11px;">
+                                        Order
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </template>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: HOME OVERVIEW                       -->
+        <!-- ========================================== -->
+        <template if:true={isHomeTab}>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">Distributor Account</div>
+                    <div class="kpi-value" style="font-size:18px;">{activeDistributorName}</div>
+                    <div class="kpi-sub">Code: {activeDistributorCode}</div>
+                </div>
+                <div class="kpi-card green">
+                    <div class="kpi-title">Primary Purchases MTD</div>
+                    <div class="kpi-value">₹{formattedPrimaryTotal}</div>
+                    <div class="kpi-sub">{primaryOrdersCount} Primary Orders</div>
+                </div>
+                <div class="kpi-card blue">
+                    <div class="kpi-title">Secondary Sales MTD</div>
+                    <div class="kpi-value">₹{formattedSecondaryTotal}</div>
+                    <div class="kpi-sub">{secondaryOrdersCount} Retail Orders</div>
+                </div>
+                <div class="kpi-card amber">
+                    <div class="kpi-title">Available Credit</div>
+                    <div class="kpi-value">₹{formattedAvailableCredit}</div>
+                    <div class="kpi-sub">Limit: ₹{formattedCreditLimit}</div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
+                <!-- RECENT PRIMARY ORDERS -->
+                <div class="table-container">
+                    <div class="table-header-bar">
+                        <strong style="font-size:14px;">Recent Primary Orders (Distributor $\rightarrow$ Factory)</strong>
+                        <button class="btn-primary" onclick={openBulkOrderModal} style="padding:4px 10px; font-size:11px;">+ New Primary Order</button>
+                    </div>
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Date</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={recentPrimaryOrders} for:item="o">
+                                <tr key={o.id}>
+                                    <td><strong style="color:#9B1B22;">{o.name}</strong></td>
+                                    <td>{o.orderDate}</td>
+                                    <td>{o.itemsCount} SKUs</td>
+                                    <td>₹{o.totalAmount}</td>
+                                    <td><span class={o.statusClass}>{o.status}</span></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- QUICK ACTIONS & ALERTS -->
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                    <div class="kpi-card" style="border-left:4px solid #16A34A;">
+                        <h3 style="font-weight:bold; font-size:14px; margin-bottom:8px;">Distributor Quick Actions</h3>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <button class="btn-primary" onclick={openBulkOrderModal} style="justify-content:center;">
+                                + Bulk Primary Purchase Order
+                            </button>
+                            <button class="btn-secondary" onclick={handleNavClick} data-tab="orders" style="justify-content:center;">
+                                View All Orders
+                            </button>
+                            <button class="btn-secondary" onclick={handleNavClick} data-tab="products" style="justify-content:center;">
+                                Product Catalog
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card" style="border-left:4px solid #3B82F6;">
+                        <h3 style="font-weight:bold; font-size:14px; margin-bottom:4px;">Warehouse Operations</h3>
+                        <p style="font-size:12px; color:#64748B;">Central Depot: Western Mumbai Central Warehouse</p>
+                        <p style="font-size:12px; color:#64748B; margin-top:4px;">GSTIN: 27AAAAA0000A1Z5</p>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- ========================================== -->
+        <!-- TAB 4: INVOICES, GRN & INVENTORY           -->
+        <!-- ========================================== -->
+        <template if:true={isOtherTab}>
+            <div class="table-container" style="padding:24px;">
+                <h2 style="font-size:16px; font-weight:bold; color:#1E293B; margin-bottom:12px;">{activeTabName} Management</h2>
+                <p style="color:#64748B; font-size:13px; margin-bottom:16px;">
+                    Distributor operations records for {activeDistributorName} are synchronized with Salesforce DMS cloud.
+                </p>
+                <button class="btn-secondary" onclick={handleNavClick} data-tab="orders">
+                    Return to Orders Dashboard
+                </button>
+            </div>
+        </template>
+
+    </main>
+
+    <!-- ============================================================== -->
+    <!-- MODAL: BULK MULTI-PRODUCT PRIMARY ORDER (SINGLE TIME MULTIPLE) -->
+    <!-- ============================================================== -->
+    <template if:true={showBulkOrderModal}>
+        <div class="modal-backdrop">
+            <div class="modal-dialog">
+                <!-- MODAL HEADER -->
+                <div class="modal-header">
+                    <div>
+                        <div class="modal-title">New Primary Order (Bulk Multi-Product Booking)</div>
+                        <span style="font-size:11px; opacity:0.9;">Distributor: {activeDistributorName} • Plant Order Matrix</span>
+                    </div>
+                    <button class="close-btn" onclick={closeBulkOrderModal}>&times;</button>
+                </div>
+
+                <!-- MODAL BODY -->
+                <div class="modal-body">
+                    <!-- PO REFERENCE & REMARKS -->
+                    <div style="display:grid; grid-template-columns: 1fr 2fr; gap:16px; margin-bottom:16px;">
+                        <div>
+                            <label style="font-size:11px; font-weight:bold; color:#475569;">Distributor PO Number</label>
+                            <input type="text" class="search-input" style="width:100%; margin-top:4px;" placeholder="e.g. PO-OCT-2026-001" onchange={handlePoNumberChange} value={poNumber} />
+                        </div>
+                        <div>
+                            <label style="font-size:11px; font-weight:bold; color:#475569;">Delivery Notes / Dispatch Instructions</label>
+                            <input type="text" class="search-input" style="width:100%; margin-top:4px;" placeholder="e.g. Direct dispatch to Central Godown, Urgent delivery" onchange={handleRemarksChange} value={orderRemarks} />
+                        </div>
+                    </div>
+
+                    <!-- SEARCH & FILTER -->
+                    <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                        <input type="text" class="search-input" style="width:320px;" placeholder="Filter products by code, name or brand..." onkeyup={handleBulkModalSearch} />
+                        <span style="font-size:12px; font-weight:600; color:#16A34A;">
+                            ✓ Enter quantities for multiple SKUs below to order in a single click!
+                        </span>
+                    </div>
+
+                    <!-- MULTI-PRODUCT GRID MATRIX -->
+                    <div style="max-height: 400px; overflow-y:auto; border:1px solid #E2E8F0; border-radius:8px;">
+                        <table class="custom-table order-matrix-table">
+                            <thead style="position:sticky; top:0; z-index:10;">
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Product Description</th>
+                                    <th>Brand</th>
+                                    <th>Pack</th>
+                                    <th>Rate (₹)</th>
+                                    <th>MRP (₹)</th>
+                                    <th style="width:150px; text-align:center;">Order Qty</th>
+                                    <th style="width:120px; text-align:right;">Line Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={bulkModalProducts} for:item="item">
+                                    <tr key={item.id}>
+                                        <td><strong>{item.code}</strong></td>
+                                        <td>
+                                            <span style="font-weight:700; color:#1E293B;">{item.name}</span>
+                                        </td>
+                                        <td><span class="tag-badge">{item.brand}</span></td>
+                                        <td>{item.packSize}</td>
+                                        <td><strong style="color:#16A34A;">₹{item.unitPrice}</strong></td>
+                                        <td><span style="color:#94A3B8; text-decoration:line-through;">₹{item.mrp}</span></td>
+                                        <!-- QUANTITY CONTROLS -->
+                                        <td>
+                                            <div class="qty-control" style="justify-content:center;">
+                                                <button class="qty-btn" onclick={handleQtyDecrement} data-id={item.id}>-</button>
+                                                <input type="number" min="0" value={item.selectedQty} data-id={item.id} onchange={handleQtyInputChange} />
+                                                <button class="qty-btn" onclick={handleQtyIncrement} data-id={item.id}>+</button>
+                                            </div>
+                                        </td>
+                                        <td style="text-align:right;">
+                                            <strong style="color:#1E293B;">₹{item.lineTotalFormatted}</strong>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- MODAL FOOTER WITH LIVE ORDER SUMMARY -->
+                <div class="modal-footer">
+                    <div class="live-order-summary">
+                        <div>
+                            <span class="summary-stat-label">Selected SKUs</span>
+                            <div class="summary-stat-val">{bulkSelectedSkusCount}</div>
+                        </div>
+                        <div>
+                            <span class="summary-stat-label">Total Units</span>
+                            <div class="summary-stat-val">{bulkTotalUnits}</div>
+                        </div>
+                        <div>
+                            <span class="summary-stat-label">Subtotal</span>
+                            <div class="summary-stat-val">₹{bulkSubtotalFormatted}</div>
+                        </div>
+                        <div>
+                            <span class="summary-stat-label">GST (18%)</span>
+                            <div class="summary-stat-val">₹{bulkTaxFormatted}</div>
+                        </div>
+                        <div style="border-left:2px solid #FECACA; padding-left:14px;">
+                            <span class="summary-stat-label" style="color:#9B1B22;">Grand Total Amount</span>
+                            <div class="summary-stat-val" style="font-size:18px; color:#9B1B22;">₹{bulkGrandTotalFormatted}</div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-secondary" onclick={closeBulkOrderModal}>Cancel</button>
+                        <button class="btn-primary" onclick={submitBulkPrimaryOrder} disabled={isSubmitOrderDisabled}>
+                            <template if:true={isSubmittingOrder}>
+                                <lightning-spinner alternative-text="Submitting Order..." size="small"></lightning-spinner>
+                            </template>
+                            <lightning-icon icon-name="utility:check" size="x-small" variant="inverse"></lightning-icon>
+                            Confirm & Submit Primary Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- ============================================================== -->
+    <!-- MODAL: ORDER DETAILS & LINE ITEMS DRILLDOWN                    -->
+    <!-- ============================================================== -->
+    <template if:true={showDetailModal}>
+        <div class="modal-backdrop">
+            <div class="modal-dialog" style="max-width:800px;">
+                <div class="modal-header">
+                    <div>
+                        <div class="modal-title">Order Lines: {selectedOrder.name}</div>
+                        <span style="font-size:11px; opacity:0.9;">Type: {selectedOrder.orderType} • Date: {selectedOrder.orderDate}</span>
+                    </div>
+                    <button class="close-btn" onclick={closeDetailModal}>&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:16px; background:#F8FAFC; padding:12px; border-radius:8px;">
+                        <div>
+                            <span style="font-size:11px; color:#64748B;">Party / Customer</span>
+                            <div style="font-weight:bold;">{selectedOrder.customerName}</div>
+                        </div>
+                        <div>
+                            <span style="font-size:11px; color:#64748B;">Status</span>
+                            <div><span class={selectedOrder.statusClass}>{selectedOrder.status}</span></div>
+                        </div>
+                        <div>
+                            <span style="font-size:11px; color:#64748B;">Order Value</span>
+                            <div style="font-weight:bold; color:#16A34A; font-size:16px;">₹{selectedOrder.totalAmount}</div>
+                        </div>
+                    </div>
+
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Product SKU</th>
+                                <th>Product Name</th>
+                                <th>Quantity</th>
+                                <th>Free Goods</th>
+                                <th>Unit Rate (₹)</th>
+                                <th>Line Total (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={selectedOrder.lines} for:item="line">
+                                <tr key={line.id}>
+                                    <td><strong>{line.productCode}</strong></td>
+                                    <td>{line.productName}</td>
+                                    <td><strong>{line.quantity}</strong></td>
+                                    <td>{line.freeQuantity}</td>
+                                    <td>₹{line.unitPrice}</td>
+                                    <td><strong>₹{line.lineTotal}</strong></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer" style="justify-content:flex-end;">
+                    <button class="btn-secondary" onclick={closeDetailModal}>Close</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+</template>

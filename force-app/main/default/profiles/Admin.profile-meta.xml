@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Profile xmlns="http://soap.sforce.com/2006/04/metadata">
     <applicationVisibilities>
+        <application>DMS</application>
+        <default>false</default>
+        <visible>true</visible>
+    </applicationVisibilities>
+    <applicationVisibilities>
         <application>Enterprise_SFA_DMS</application>
         <default>false</default>
         <visible>true</visible>
@@ -105,6 +110,10 @@
     <layoutAssignments>
         <layout>Warehouse__c-Warehouse Layout</layout>
     </layoutAssignments>
+    <tabVisibilities>
+        <tab>DMS_Portal</tab>
+        <visibility>DefaultOn</visibility>
+    </tabVisibilities>
     <tabVisibilities>
         <tab>Employee__c</tab>
         <visibility>DefaultOn</visibility>
