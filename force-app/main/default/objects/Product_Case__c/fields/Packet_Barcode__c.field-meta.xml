@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Packet_Barcode__c</fullName>
+    <description>Barcode printed on each individual consumer packet inside this case</description>
+    <externalId>false</externalId>
+    <label>Packet Barcode</label>
+    <length>100</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

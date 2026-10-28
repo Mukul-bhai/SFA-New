@@ -1,7 +1,7 @@
 public with sharing class PJPApprovalController {
 
     public class PJPApprovalInfo {
-        @AuraEnabled public String idii; 
+        @AuraEnabled public String idi; 
         @AuraEnabled public String name;
         @AuraEnabled public String status;
         @AuraEnabled public String employeeName;

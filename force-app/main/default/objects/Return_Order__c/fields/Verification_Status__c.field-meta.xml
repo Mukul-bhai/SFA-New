@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Verification_Status__c</fullName>
+    <label>Barcode Verification Status</label>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Verified Genuine</fullName>
+                <default>true</default>
+                <label>Verified Genuine</label>
+            </value>
+            <value>
+                <fullName>Near Expiry Verified</fullName>
+                <default>false</default>
+                <label>Near Expiry Verified</label>
+            </value>
+            <value>
+                <fullName>Expired Stock</fullName>
+                <default>false</default>
+                <label>Expired Stock</label>
+            </value>
+            <value>
+                <fullName>Unverified</fullName>
+                <default>false</default>
+                <label>Unverified</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

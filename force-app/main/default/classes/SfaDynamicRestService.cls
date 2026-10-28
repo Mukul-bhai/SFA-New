@@ -14,6 +14,7 @@ global inherited sharing class SfaDynamicRestService {
         public List<String> geofenceBypassReasons;
         public List<String> leaveCategories;
         public List<String> leaveTypes;
+        public List<DistributorDTO> distributors;
     }
 
     // Dynamic Dashboard DTO
@@ -156,6 +157,19 @@ global inherited sharing class SfaDynamicRestService {
         public Boolean canTakeOrder;
         public Integer totalOrders;
         public List<OrderSummaryDTO> previousOrders;
+        public String primaryDistributorId;
+        public String primaryDistributorName;
+    }
+
+    global class DistributorDTO {
+        public String id;
+        public String name;
+        public String code;
+        public String contactPerson;
+        public String status;
+        public Decimal creditLimit;
+        public Decimal currentOutstanding;
+        public Boolean dmsPortalEnabled;
     }
 
     global class OrderSummaryDTO {
@@ -188,6 +202,8 @@ global inherited sharing class SfaDynamicRestService {
         public String appliedSchemeId;
         public String schemesApplied;
         public String mustSellNonPurchaseReasons;
+        public String distributorId;
+        public String orderType;
         public List<OrderItemRequest> items;
 
         // Stock check / Return data
@@ -259,6 +275,41 @@ global inherited sharing class SfaDynamicRestService {
         public String selfieUrl;
         public String freezerPhotoUrl;
         public String checkoutComments;
+
+        // Two-Tier Barcode & Return Verification Fields
+        public String scannedBarcode;
+        public String barcodeType;
+        public String caseNumber;
+        public String verificationStatus;
+        public String returnType;
+    }
+
+    global class BarcodeVerificationDTO {
+        public Boolean success;
+        public String message;
+        public String barcodeType; // 'Case Barcode' or 'Packet Barcode'
+        public String scannedCode;
+        public String caseBarcode;
+        public String packetBarcode;
+        public String batchNumber;
+        public Date manufacturingDate;
+        public Date expiryDate;
+        public Decimal unitsPerCase;
+        public String productId;
+        public String productName;
+        public String productCode;
+        public String category;
+        public String brand;
+        public Decimal mrp;
+        public Decimal rbp;
+        public String distributorId;
+        public String distributorName;
+        public Integer shelfLifeDaysTotal;
+        public Integer shelfLifeDaysRemaining;
+        public String freshnessStatus;
+        public String verificationStatus;
+        public Boolean isReturnEligible;
+        public String suggestedReturnReason;
     }
 
     global class TargetDTO {
@@ -370,6 +421,14 @@ global inherited sharing class SfaDynamicRestService {
         } else if (path.endsWith('/targets')) {
             List<TargetDTO> resp = getDynamicTargets(currentUserId);
             res.responseBody = Blob.valueOf(JSON.serialize(resp));
+        } else if (path.endsWith('/distributors')) {
+            List<DistributorDTO> resp = getDistributors();
+            res.responseBody = Blob.valueOf(JSON.serialize(resp));
+        } else if (path.endsWith('/barcode') || path.contains('/barcode')) {
+            String codeParam = req.params != null ? req.params.get('code') : null;
+            String distParam = req.params != null ? req.params.get('distributorId') : null;
+            BarcodeVerificationDTO resp = verifyBarcode(codeParam, distParam);
+            res.responseBody = Blob.valueOf(JSON.serialize(resp));
         } else {
             res.statusCode = 404;
             res.responseBody = Blob.valueOf('{"success":false,"message":"Endpoint not found"}');
@@ -476,7 +535,31 @@ global inherited sharing class SfaDynamicRestService {
         };
         resp.leaveCategories = getPicklistValues('Leave_Request__c', 'Leave_Type_Category__c');
         resp.leaveTypes = getPicklistValues('Leave_Request__c', 'Leave_Type__c');
+        resp.distributors = getDistributors();
         return resp;
+    }
+
+    private static List<DistributorDTO> getDistributors() {
+        List<DistributorDTO> listDTO = new List<DistributorDTO>();
+        for (Distributor__c d : [
+            SELECT Id, Name, Distributor_Code__c, Contact_Person__c, Status__c, 
+                   Credit_Limit__c, Current_Outstanding__c, DMS_Portal_Enabled__c
+            FROM Distributor__c
+            WHERE Status__c = 'Active'
+            ORDER BY Name ASC
+        ]) {
+            DistributorDTO dto = new DistributorDTO();
+            dto.id = d.Id;
+            dto.name = d.Name;
+            dto.code = d.Distributor_Code__c != null ? d.Distributor_Code__c : '';
+            dto.contactPerson = d.Contact_Person__c != null ? d.Contact_Person__c : '';
+            dto.status = d.Status__c != null ? d.Status__c : 'Active';
+            dto.creditLimit = d.Credit_Limit__c != null ? d.Credit_Limit__c : 0;
+            dto.currentOutstanding = d.Current_Outstanding__c != null ? d.Current_Outstanding__c : 0;
+            dto.dmsPortalEnabled = d.DMS_Portal_Enabled__c != null ? d.DMS_Portal_Enabled__c : true;
+            listDTO.add(dto);
+        }
+        return listDTO;
     }
 
     private static List<String> getPicklistValues(String objectName, String fieldName) {
@@ -1211,10 +1294,10 @@ global inherited sharing class SfaDynamicRestService {
             String productNamesSummary = String.join(productNamesList, ', ');
 
             Order__c ord = new Order__c(
-                Outlet__c = req.outletId,
                 Visit__c = req.visitId,
                 Sales_Executive__c = userId,
                 Order_Date__c = System.now(),
+                Order_Type__c = String.isNotBlank(req.orderType) ? req.orderType : 'Secondary',
                 Applied_Scheme__c = req.appliedSchemeId,
                 Schemes_Applied__c = req.schemesApplied,
                 Gross_Amount__c = req.grossAmount,
@@ -1224,8 +1307,30 @@ global inherited sharing class SfaDynamicRestService {
                 Total_Products_Count__c = totalProductsCount,
                 Product_Names__c = productNamesSummary,
                 Must_Sell_Non_Purchase_Reasons__c = req.mustSellNonPurchaseReasons,
-                Status__c = 'Draft'
+                Status__c = 'Submitted'
             );
+
+            Id parsedOutletId = null;
+            try {
+                if (String.isNotBlank(req.outletId)) {
+                    parsedOutletId = (Id) req.outletId;
+                }
+            } catch (Exception ex) {}
+
+            if (parsedOutletId != null) {
+                String sObjName = parsedOutletId.getSObjectType().getDescribe().getName();
+                if (sObjName == 'Outlet__c') {
+                    ord.Outlet__c = parsedOutletId;
+                } else if (sObjName == 'Retailer__c') {
+                    ord.Retailer__c = parsedOutletId;
+                }
+            }
+
+            if (String.isNotBlank(req.distributorId)) {
+                try {
+                    ord.Primary_Distributor__c = (Id) req.distributorId;
+                } catch (Exception ex) {}
+            }
             insert ord;
 
             if (req.items != null && !req.items.isEmpty()) {
@@ -1266,11 +1371,28 @@ global inherited sharing class SfaDynamicRestService {
                 insert lines;
             }
 
-            // Dynamically increment Outlet Outstanding & Orders count
-            Outlet__c out = [SELECT Id, Outstanding_Balance__c, Total_Orders__c FROM Outlet__c WHERE Id = :req.outletId LIMIT 1];
-            out.Outstanding_Balance__c = (out.Outstanding_Balance__c != null ? out.Outstanding_Balance__c : 0) + ord.Total_Amount__c;
-            out.Total_Orders__c = (out.Total_Orders__c != null ? out.Total_Orders__c : 0) + 1;
-            update out;
+            // Dynamically increment Outlet or Retailer Outstanding & Orders count
+            try {
+                if (parsedOutletId != null) {
+                    String sObjName = parsedOutletId.getSObjectType().getDescribe().getName();
+                    if (sObjName == 'Outlet__c') {
+                        List<Outlet__c> outList = [SELECT Id, Outstanding_Balance__c, Total_Orders__c FROM Outlet__c WHERE Id = :parsedOutletId LIMIT 1];
+                        if (!outList.isEmpty()) {
+                            outList[0].Outstanding_Balance__c = (outList[0].Outstanding_Balance__c != null ? outList[0].Outstanding_Balance__c : 0) + ord.Total_Amount__c;
+                            outList[0].Total_Orders__c = (outList[0].Total_Orders__c != null ? outList[0].Total_Orders__c : 0) + 1;
+                            update outList[0];
+                        }
+                    } else if (sObjName == 'Retailer__c') {
+                        List<Retailer__c> retList = [SELECT Id, Outstanding_Balance__c FROM Retailer__c WHERE Id = :parsedOutletId LIMIT 1];
+                        if (!retList.isEmpty()) {
+                            retList[0].Outstanding_Balance__c = (retList[0].Outstanding_Balance__c != null ? retList[0].Outstanding_Balance__c : 0) + ord.Total_Amount__c;
+                            update retList[0];
+                        }
+                    }
+                }
+            } catch (Exception eOut) {
+                System.debug('Outlet/Retailer balance update note: ' + eOut.getMessage());
+            }
 
             // Dynamically increment Target Achieved Revenue
             List<Target__c> targets = [SELECT Id, Achieved_Revenue__c FROM Target__c WHERE Sales_Executive__c = :userId LIMIT 1];
@@ -1368,9 +1490,47 @@ global inherited sharing class SfaDynamicRestService {
             Remarks__c = req.remarks
         );
         insert pr;
+
+        // Also record in Return_Order__c for two-tier barcode tracking & ledger
+        try {
+            String retNum = 'RET-' + (req.returnType == 'Primary' ? 'PRM-' : 'SEC-') + String.valueOf(DateTime.now().getTime()).substring(5);
+            String rReason = 'Damaged in Transit / Goods Receipt';
+            if (String.isNotBlank(req.returnReason)) {
+                String rLower = req.returnReason.toLowerCase();
+                if (rLower.contains('expired')) rReason = 'Expired Stock';
+                else if (rLower.contains('near')) rReason = 'Near Expiry Stock (30 Days)';
+                else if (rLower.contains('wrong') || rLower.contains('discrepancy')) rReason = 'Wrong Product / Shipment Discrepancy';
+                else if (rLower.contains('quality') || rLower.contains('packaging')) rReason = 'Quality Defect / Packaging Issue';
+            }
+
+            Return_Order__c ro = new Return_Order__c(
+                Name = retNum,
+                Distributor__c = req.distributorId,
+                Retailer__c = req.outletId,
+                Return_Type__c = String.isNotBlank(req.returnType) ? req.returnType : (req.outletId != null ? 'Secondary' : 'Primary'),
+                Return_Number__c = retNum,
+                Return_Date__c = Date.today(),
+                Return_Reason__c = rReason,
+                Total_Return_Amount__c = (req.totalAmount != null ? req.totalAmount : (req.quantity != null && req.mrp != null ? req.quantity * req.mrp : 0)),
+                Remarks__c = req.remarks,
+                Scanned_Barcode__c = req.scannedBarcode,
+                Barcode_Type__c = (req.barcodeType == 'Packet Barcode' ? 'Packet Barcode' : 'Case Barcode'),
+                Case_Number__c = req.caseNumber,
+                Batch_Number__c = req.batchNo,
+                Manufacturing_Date__c = req.manufacturingDate,
+                Expiry_Date__c = req.endDate,
+                Product_Custom__c = req.productId,
+                Verification_Status__c = String.isNotBlank(req.verificationStatus) ? req.verificationStatus : 'Verified Genuine',
+                Status__c = 'Submitted'
+            );
+            insert ro;
+        } catch (Exception ex) {
+            System.debug('Error logging Return_Order__c: ' + ex.getMessage());
+        }
+
         resp.success = true;
         resp.recordId = pr.Id;
-        resp.message = 'Product return submitted.';
+        resp.message = 'Product return submitted successfully.';
         return resp;
     }
 
@@ -1696,5 +1856,147 @@ global inherited sharing class SfaDynamicRestService {
             res.message = 'Failed to submit Expense Claim: ' + ex.getMessage();
         }
         return res;
+    }
+
+    // ========================================================
+    // TWO-TIER BARCODE SCANNING & VERIFICATION SERVICE
+    // ========================================================
+    public static BarcodeVerificationDTO verifyBarcode(String code, String distributorId) {
+        BarcodeVerificationDTO dto = new BarcodeVerificationDTO();
+        if (String.isBlank(code)) {
+            dto.success = false;
+            dto.message = 'Please provide a barcode to scan or verify.';
+            return dto;
+        }
+
+        String trimmedCode = code.trim();
+        dto.scannedCode = trimmedCode;
+
+        // 1. Try finding by Case_Barcode__c (Case Barcode)
+        List<Product_Case__c> cases = [
+            SELECT Id, Name, Case_Barcode__c, Packet_Barcode__c, Batch_Number__c,
+                   Manufacturing_Date__c, Expiry_Date__c, Units_Per_Case__c,
+                   Distributor__c, Distributor__r.Name,
+                   Product_Custom__c, Product_Custom__r.Name, Product_Custom__r.Product_Code__c,
+                   Product_Custom__r.SKU__c, Product_Custom__r.Category__c, Product_Custom__r.Brand__c,
+                   Product_Custom__r.MRP__c, Product_Custom__r.RBP__c
+            FROM Product_Case__c
+            WHERE Case_Barcode__c = :trimmedCode
+            LIMIT 1
+        ];
+
+        Boolean isCase = true;
+        if (cases.isEmpty()) {
+            // 2. Try finding by Packet_Barcode__c (Packet Barcode)
+            cases = [
+                SELECT Id, Name, Case_Barcode__c, Packet_Barcode__c, Batch_Number__c,
+                       Manufacturing_Date__c, Expiry_Date__c, Units_Per_Case__c,
+                       Distributor__c, Distributor__r.Name,
+                       Product_Custom__c, Product_Custom__r.Name, Product_Custom__r.Product_Code__c,
+                       Product_Custom__r.SKU__c, Product_Custom__r.Category__c, Product_Custom__r.Brand__c,
+                       Product_Custom__r.MRP__c, Product_Custom__r.RBP__c
+                FROM Product_Case__c
+                WHERE Packet_Barcode__c = :trimmedCode
+                LIMIT 1
+            ];
+            isCase = false;
+        }
+
+        if (cases.isEmpty()) {
+            // 3. Try finding by Batch_Number__c
+            cases = [
+                SELECT Id, Name, Case_Barcode__c, Packet_Barcode__c, Batch_Number__c,
+                       Manufacturing_Date__c, Expiry_Date__c, Units_Per_Case__c,
+                       Distributor__c, Distributor__r.Name,
+                       Product_Custom__c, Product_Custom__r.Name, Product_Custom__r.Product_Code__c,
+                       Product_Custom__r.SKU__c, Product_Custom__r.Category__c, Product_Custom__r.Brand__c,
+                       Product_Custom__r.MRP__c, Product_Custom__r.RBP__c
+                FROM Product_Case__c
+                WHERE Batch_Number__c = :trimmedCode
+                LIMIT 1
+            ];
+            isCase = false;
+        }
+
+        if (cases.isEmpty()) {
+            // Check if matches Product__c code or SKU
+            List<Product__c> prods = [
+                SELECT Id, Name, Product_Code__c, SKU__c, Category__c, Brand__c, MRP__c, RBP__c
+                FROM Product__c
+                WHERE Product_Code__c = :trimmedCode OR SKU__c = :trimmedCode OR Id = :trimmedCode
+                LIMIT 1
+            ];
+            if (!prods.isEmpty()) {
+                Product__c p = prods[0];
+                dto.success = true;
+                dto.barcodeType = 'Product SKU';
+                dto.productId = p.Id;
+                dto.productName = p.Name;
+                dto.productCode = p.Product_Code__c;
+                dto.category = p.Category__c;
+                dto.brand = p.Brand__c;
+                dto.mrp = p.MRP__c;
+                dto.rbp = p.RBP__c;
+                dto.verificationStatus = 'Unverified (No Batch/Case)';
+                dto.freshnessStatus = 'Unknown (Manual Inspection Required)';
+                dto.message = 'Product identified by SKU. No case or batch barcode associated.';
+                return dto;
+            }
+
+            dto.success = false;
+            dto.message = 'No matching product case or packet found for barcode: ' + trimmedCode;
+            return dto;
+        }
+
+        Product_Case__c c = cases[0];
+        dto.success = true;
+        dto.barcodeType = isCase ? 'Case Barcode' : 'Packet Barcode';
+        dto.caseBarcode = c.Case_Barcode__c;
+        dto.packetBarcode = c.Packet_Barcode__c;
+        dto.batchNumber = c.Batch_Number__c;
+        dto.manufacturingDate = c.Manufacturing_Date__c;
+        dto.expiryDate = c.Expiry_Date__c;
+        dto.unitsPerCase = c.Units_Per_Case__c != null ? c.Units_Per_Case__c : 48;
+        dto.productId = c.Product_Custom__c;
+        dto.productName = c.Product_Custom__r != null ? c.Product_Custom__r.Name : 'Parle Product';
+        dto.productCode = c.Product_Custom__r != null ? c.Product_Custom__r.Product_Code__c : '';
+        dto.category = c.Product_Custom__r != null ? c.Product_Custom__r.Category__c : 'Biscuits';
+        dto.brand = c.Product_Custom__r != null ? c.Product_Custom__r.Brand__c : 'Parle';
+        dto.mrp = c.Product_Custom__r != null ? c.Product_Custom__r.MRP__c : 25;
+        dto.rbp = c.Product_Custom__r != null ? c.Product_Custom__r.RBP__c : 21.5;
+        dto.distributorId = c.Distributor__c;
+        dto.distributorName = c.Distributor__r != null ? c.Distributor__r.Name : '';
+
+        // Freshness & Shelf-Life Calculation
+        Date today = Date.today();
+        if (c.Manufacturing_Date__c != null && c.Expiry_Date__c != null) {
+            dto.shelfLifeDaysTotal = c.Manufacturing_Date__c.daysBetween(c.Expiry_Date__c);
+            dto.shelfLifeDaysRemaining = today.daysBetween(c.Expiry_Date__c);
+        } else {
+            dto.shelfLifeDaysTotal = 180;
+            dto.shelfLifeDaysRemaining = 90;
+        }
+
+        if (dto.shelfLifeDaysRemaining < 0) {
+            dto.freshnessStatus = 'Expired Stock (' + Math.abs(dto.shelfLifeDaysRemaining) + ' days expired)';
+            dto.verificationStatus = 'Expired Stock';
+            dto.isReturnEligible = true;
+            dto.suggestedReturnReason = 'Expired Stock';
+            dto.message = 'ALERT: Expired Product detected! Expired ' + Math.abs(dto.shelfLifeDaysRemaining) + ' days ago.';
+        } else if (dto.shelfLifeDaysRemaining <= 45) {
+            dto.freshnessStatus = 'Near Expiry Stock (' + dto.shelfLifeDaysRemaining + ' days left)';
+            dto.verificationStatus = 'Near Expiry Verified';
+            dto.isReturnEligible = true;
+            dto.suggestedReturnReason = 'Near Expiry Stock (30 Days)';
+            dto.message = 'NOTICE: Near-Expiry Stock. ' + dto.shelfLifeDaysRemaining + ' days remaining until expiry.';
+        } else {
+            dto.freshnessStatus = 'Fresh Stock (' + dto.shelfLifeDaysRemaining + ' days shelf-life)';
+            dto.verificationStatus = 'Verified Genuine';
+            dto.isReturnEligible = true;
+            dto.suggestedReturnReason = 'Damaged in Transit / Goods Receipt';
+            dto.message = 'GENUINE: Valid ' + dto.barcodeType + ' verified. Batch ' + dto.batchNumber + ', MFG: ' + String.valueOf(dto.manufacturingDate) + ', EXP: ' + String.valueOf(dto.expiryDate);
+        }
+
+        return dto;
     }
 }

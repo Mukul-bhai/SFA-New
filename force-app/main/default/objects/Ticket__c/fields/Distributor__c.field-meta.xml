@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Distributor__c</fullName>
+    <label>Distributor</label>
+    <type>Lookup</type>
+    <referenceTo>Distributor__c</referenceTo>
+    <relationshipLabel>Support Tickets</relationshipLabel>
+    <relationshipName>Support_Tickets</relationshipName>
+    <deleteConstraint>SetNull</deleteConstraint>
+</CustomField>
