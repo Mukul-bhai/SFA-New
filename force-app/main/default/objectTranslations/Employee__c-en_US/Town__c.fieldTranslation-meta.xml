@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Town --></label>
+    <name>Town__c</name>
+    <picklistValues>
+        <masterLabel>Andheri</masterLabel>
+        <translation><!-- Andheri --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Bandra</masterLabel>
+        <translation><!-- Bandra --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>CG Road</masterLabel>
+        <translation><!-- CG Road --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Indiranagar</masterLabel>
+        <translation><!-- Indiranagar --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Jayanagar</masterLabel>
+        <translation><!-- Jayanagar --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Koramangala</masterLabel>
+        <translation><!-- Koramangala --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>MG road</masterLabel>
+        <translation><!-- MG road --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Saket</masterLabel>
+        <translation><!-- Saket --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Whitefield</masterLabel>
+        <translation><!-- Whitefield --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

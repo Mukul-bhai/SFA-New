@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Return Reason --></label>
+    <name>Return_Reason__c</name>
+    <picklistValues>
+        <masterLabel>Damaged in Transit / Goods Receipt</masterLabel>
+        <translation><!-- Damaged in Transit / Goods Receipt --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Expired Stock</masterLabel>
+        <translation><!-- Expired Stock --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Near Expiry Stock (30 Days)</masterLabel>
+        <translation><!-- Near Expiry Stock (30 Days) --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Quality Defect / Packaging Issue</masterLabel>
+        <translation><!-- Quality Defect / Packaging Issue --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Wrong Product / Shipment Discrepancy</masterLabel>
+        <translation><!-- Wrong Product / Shipment Discrepancy --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

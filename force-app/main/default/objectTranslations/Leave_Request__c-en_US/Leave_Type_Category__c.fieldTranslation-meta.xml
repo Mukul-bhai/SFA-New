@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Leave Category --></label>
+    <name>Leave_Type_Category__c</name>
+    <picklistValues>
+        <masterLabel>Customer / Retailer Leave</masterLabel>
+        <translation><!-- Customer / Retailer Leave --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Sales Executive Leave</masterLabel>
+        <translation><!-- Sales Executive Leave --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

@@ -4,6 +4,8 @@
     <description>Records reason if outlet did not purchase mandatory Must Sell products</description>
     <label>Must Sell Non Purchase Reasons</label>
     <length>2000</length>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
     <type>LongTextArea</type>
     <visibleLines>3</visibleLines>
 </CustomField>

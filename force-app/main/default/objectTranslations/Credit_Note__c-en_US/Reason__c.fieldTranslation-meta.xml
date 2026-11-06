@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Reason --></label>
+    <name>Reason__c</name>
+    <picklistValues>
+        <masterLabel>Cash Discount</masterLabel>
+        <translation><!-- Cash Discount --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Damage Allowance</masterLabel>
+        <translation><!-- Damage Allowance --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Goods Return</masterLabel>
+        <translation><!-- Goods Return --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Rate Difference</masterLabel>
+        <translation><!-- Rate Difference --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Scheme Discount Claim</masterLabel>
+        <translation><!-- Scheme Discount Claim --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

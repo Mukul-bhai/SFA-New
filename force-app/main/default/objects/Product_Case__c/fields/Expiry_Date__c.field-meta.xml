@@ -3,5 +3,6 @@
     <fullName>Expiry_Date__c</fullName>
     <label>Expiry Date</label>
     <required>false</required>
+    <trackTrending>false</trackTrending>
     <type>Date</type>
 </CustomField>

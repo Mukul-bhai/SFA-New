@@ -3,7 +3,8 @@
     <fullName>DMS_Portal_Enabled__c</fullName>
     <defaultValue>false</defaultValue>
     <description>When checked, this distributor is authorized to log in to the DMS Distributor Portal.</description>
-    <externalId>false</externalId>
     <label>DMS Portal Enabled</label>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
     <type>Checkbox</type>
 </CustomField>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Fulfillment Status --></label>
+    <name>Fulfillment_Status__c</name>
+    <picklistValues>
+        <masterLabel>Allocated Backup</masterLabel>
+        <translation><!-- Allocated Backup --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Allocated Primary</masterLabel>
+        <translation><!-- Allocated Primary --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Backordered</masterLabel>
+        <translation><!-- Backordered --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Cancelled</masterLabel>
+        <translation><!-- Cancelled --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

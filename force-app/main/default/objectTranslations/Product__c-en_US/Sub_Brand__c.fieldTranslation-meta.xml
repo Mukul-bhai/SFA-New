@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Sub Brand --></label>
+    <name>Sub_Brand__c</name>
+    <picklistValues>
+        <masterLabel>20-20</masterLabel>
+        <translation><!-- 20-20 --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Bourbon</masterLabel>
+        <translation><!-- Bourbon --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Good Day</masterLabel>
+        <translation><!-- Good Day --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Hide &amp; Seek</masterLabel>
+        <translation><!-- Hide &amp; Seek --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Kopiko</masterLabel>
+        <translation><!-- Kopiko --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Krackjack</masterLabel>
+        <translation><!-- Krackjack --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Marie Gold</masterLabel>
+        <translation><!-- Marie Gold --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Monaco</masterLabel>
+        <translation><!-- Monaco --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Parle-G</masterLabel>
+        <translation><!-- Parle-G --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

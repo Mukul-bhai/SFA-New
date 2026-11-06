@@ -3,20 +3,21 @@
     <fullName>Day_Type__c</fullName>
     <label>Day Type</label>
     <required>true</required>
+    <trackTrending>false</trackTrending>
     <type>Picklist</type>
     <valueSet>
         <valueSetDefinition>
             <sorted>false</sorted>
-                <value>
-                    <fullName>Full_Day</fullName>
-                    <default>true</default>
-                    <label>Full Day</label>
-                </value>
-                <value>
-                    <fullName>Half_Day</fullName>
-                    <default>false</default>
-                    <label>Half Day</label>
-                </value>
+            <value>
+                <fullName>Full_Day</fullName>
+                <default>true</default>
+                <label>Full Day</label>
+            </value>
+            <value>
+                <fullName>Half_Day</fullName>
+                <default>false</default>
+                <label>Half Day</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

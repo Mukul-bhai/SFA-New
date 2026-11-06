@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Leave Type --></label>
+    <name>Leave_Type__c</name>
+    <picklistValues>
+        <masterLabel>Annual Leave</masterLabel>
+        <translation><!-- Annual Leave --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Casual Leave</masterLabel>
+        <translation><!-- Casual Leave --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Customer / Shop Closed</masterLabel>
+        <translation><!-- Customer / Shop Closed --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Emergency</masterLabel>
+        <translation><!-- Emergency --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Festival / Holiday</masterLabel>
+        <translation><!-- Festival / Holiday --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Half Day</masterLabel>
+        <translation><!-- Half Day --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Other</masterLabel>
+        <translation><!-- Other --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Retailer Vacation</masterLabel>
+        <translation><!-- Retailer Vacation --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Shop Renovation</masterLabel>
+        <translation><!-- Shop Renovation --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Sick Leave</masterLabel>
+        <translation><!-- Sick Leave --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

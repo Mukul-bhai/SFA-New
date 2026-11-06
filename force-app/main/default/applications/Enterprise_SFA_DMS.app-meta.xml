@@ -5,8 +5,12 @@
         <shouldOverrideOrgTheme>false</shouldOverrideOrgTheme>
     </brand>
     <description>Enterprise Sales Force Automation and Distributor Management System</description>
-    <formFactors>Large</formFactors>
     <formFactors>Small</formFactors>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <isNavTabPersistenceDisabled>false</isNavTabPersistenceDisabled>
+    <isOmniPinnedViewEnabled>false</isOmniPinnedViewEnabled>
     <label>Enterprise SFA &amp; DMS</label>
     <navType>Standard</navType>
     <tabs>standard-home</tabs>
@@ -20,6 +24,7 @@
     <tabs>Order__c</tabs>
     <tabs>Invoice__c</tabs>
     <tabs>Return_Order__c</tabs>
+    <tabs>Product_Case__c</tabs>
     <tabs>Credit_Note__c</tabs>
     <tabs>Expense_Claim__c</tabs>
     <tabs>Attendance__c</tabs>

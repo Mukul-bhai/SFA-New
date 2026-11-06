@@ -3,5 +3,6 @@
     <fullName>Claim_Date__c</fullName>
     <label>Claim Date</label>
     <required>true</required>
+    <trackTrending>false</trackTrending>
     <type>Date</type>
 </CustomField>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Scheme Type --></label>
+    <name>Scheme_Type__c</name>
+    <picklistValues>
+        <masterLabel>Bundle Scheme (e.g. 2 Parle-G + 1 Kopiko + 3 Monaco for Rs.200)</masterLabel>
+        <translation><!-- Bundle Scheme (e.g. 2 Parle-G + 1 Kopiko + 3 Monaco for Rs.200) --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Buy Product Get Different Product Free (e.g. Buy Parle-G Get Kopiko Free)</masterLabel>
+        <translation><!-- Buy Product Get Different Product Free (e.g. Buy Parle-G Get Kopiko Free) --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Buy Product Get Free Gift (e.g. Buy Parle-G Get Pen Free)</masterLabel>
+        <translation><!-- Buy Product Get Free Gift (e.g. Buy Parle-G Get Pen Free) --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Buy Same Product Free (e.g. Buy Parle-G Get Parle-G Free)</masterLabel>
+        <translation><!-- Buy Same Product Free (e.g. Buy Parle-G Get Parle-G Free) --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Slab Scheme (e.g. Buy 1 Get Rs.10 Off, Buy 2 Get Rs.30 Off)</masterLabel>
+        <translation><!-- Slab Scheme (e.g. Buy 1 Get Rs.10 Off, Buy 2 Get Rs.30 Off) --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

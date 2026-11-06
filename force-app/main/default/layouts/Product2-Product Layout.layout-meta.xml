@@ -119,7 +119,7 @@
         <layoutColumns/>
         <style>CustomLinks</style>
     </layoutSections>
-        <relatedLists>
+    <relatedLists>
         <fields>NAME</fields>
         <relatedList>Inventory__c.Product__c</relatedList>
     </relatedLists>

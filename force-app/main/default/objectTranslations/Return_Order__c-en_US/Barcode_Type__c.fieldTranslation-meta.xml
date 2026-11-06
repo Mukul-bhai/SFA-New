@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Barcode Type --></label>
+    <name>Barcode_Type__c</name>
+    <picklistValues>
+        <masterLabel>Case Barcode</masterLabel>
+        <translation><!-- Case Barcode --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Packet Barcode</masterLabel>
+        <translation><!-- Packet Barcode --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

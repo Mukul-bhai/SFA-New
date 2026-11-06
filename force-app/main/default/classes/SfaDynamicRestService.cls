@@ -1536,7 +1536,17 @@ global inherited sharing class SfaDynamicRestService {
 
     private static ActionResponse processTicket(ActionRequest req, Id userId) {
         ActionResponse resp = new ActionResponse();
+        String distId = req.distributorId;
+        if (String.isBlank(distId) && req.outletId != null) {
+            List<Outlet__c> outs = [SELECT Id, Beat__r.Distributor__c FROM Outlet__c WHERE Id = :req.outletId LIMIT 1];
+            if (!outs.isEmpty() && outs[0].Beat__r != null && outs[0].Beat__r.Distributor__c != null) {
+                distId = outs[0].Beat__r.Distributor__c;
+            }
+        }
+
         Ticket__c t = new Ticket__c(
+            Distributor__c = distId,
+            Ticket_Type__c = (req.outletId != null ? 'Secondary' : 'Primary'),
             Outlet__c = req.outletId,
             Visit__c = req.visitId,
             Subject__c = req.subject,

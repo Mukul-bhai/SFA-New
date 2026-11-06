@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Stock Condition --></label>
+    <name>Stock_Condition__c</name>
+    <picklistValues>
+        <masterLabel>Damaged</masterLabel>
+        <translation><!-- Damaged --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Good Stock</masterLabel>
+        <translation><!-- Good Stock --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Low Stock</masterLabel>
+        <translation><!-- Low Stock --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Near Expiry</masterLabel>
+        <translation><!-- Near Expiry --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Out of Stock</masterLabel>
+        <translation><!-- Out of Stock --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Display Location --></label>
+    <name>Display_Location__c</name>
+    <picklistValues>
+        <masterLabel>Bottom Shelf</masterLabel>
+        <translation><!-- Bottom Shelf --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Cash Counter</masterLabel>
+        <translation><!-- Cash Counter --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Endcap Display</masterLabel>
+        <translation><!-- Endcap Display --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Eye Level Shelf</masterLabel>
+        <translation><!-- Eye Level Shelf --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Floor Standee</masterLabel>
+        <translation><!-- Floor Standee --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Top Shelf</masterLabel>
+        <translation><!-- Top Shelf --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

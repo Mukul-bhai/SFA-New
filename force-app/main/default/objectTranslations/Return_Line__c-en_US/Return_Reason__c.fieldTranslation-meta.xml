@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Return Reason --></label>
+    <name>Return_Reason__c</name>
+    <picklistValues>
+        <masterLabel>Damaged In Transit</masterLabel>
+        <translation><!-- Damaged In Transit --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Expired Stock</masterLabel>
+        <translation><!-- Expired Stock --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Leakage Seal Broken</masterLabel>
+        <translation><!-- Leakage Seal Broken --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Slow Moving</masterLabel>
+        <translation><!-- Slow Moving --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Wrong Shipment</masterLabel>
+        <translation><!-- Wrong Shipment --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

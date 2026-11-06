@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Village --></label>
+    <name>Village__c</name>
+    <picklistValues>
+        <masterLabel>Empty</masterLabel>
+        <translation><!-- Empty --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Village 1</masterLabel>
+        <translation><!-- Village 1 --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

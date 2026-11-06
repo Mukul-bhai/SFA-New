@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Flavour --></label>
+    <name>Flavour__c</name>
+    <picklistValues>
+        <masterLabel>Bourbon</masterLabel>
+        <translation><!-- Bourbon --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Butter</masterLabel>
+        <translation><!-- Butter --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Cashew Butter</masterLabel>
+        <translation><!-- Cashew Butter --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Chocolate</masterLabel>
+        <translation><!-- Chocolate --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Elaichi</masterLabel>
+        <translation><!-- Elaichi --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Glucose</masterLabel>
+        <translation><!-- Glucose --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Salty</masterLabel>
+        <translation><!-- Salty --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Sweet &amp; Salty</masterLabel>
+        <translation><!-- Sweet &amp; Salty --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Vanilla</masterLabel>
+        <translation><!-- Vanilla --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

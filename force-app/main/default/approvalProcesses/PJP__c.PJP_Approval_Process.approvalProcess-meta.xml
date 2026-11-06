@@ -15,6 +15,7 @@
         <field>Total_Beats__c</field>
         <field>Total_Outlets__c</field>
         <field>Status__c</field>
+        <field>Owner</field>
     </approvalPageFields>
     <approvalStep>
         <allowDelegate>true</allowDelegate>

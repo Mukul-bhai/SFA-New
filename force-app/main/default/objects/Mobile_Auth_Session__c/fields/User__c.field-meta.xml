@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>User__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
     <label>User</label>
-    <type>Lookup</type><referenceTo>User</referenceTo><relationshipName>Mobile_Auth_Sessions</relationshipName><deleteConstraint>SetNull</deleteConstraint>
+    <referenceTo>User</referenceTo>
+    <relationshipName>Mobile_Auth_Sessions</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
 </CustomField>

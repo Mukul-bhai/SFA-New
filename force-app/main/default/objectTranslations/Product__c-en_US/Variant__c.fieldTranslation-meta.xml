@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Variant --></label>
+    <name>Variant__c</name>
+    <picklistValues>
+        <masterLabel>100g</masterLabel>
+        <translation><!-- 100g --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>120g</masterLabel>
+        <translation><!-- 120g --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>150g</masterLabel>
+        <translation><!-- 150g --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>200g</masterLabel>
+        <translation><!-- 200g --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>250g</masterLabel>
+        <translation><!-- 250g --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>500g</masterLabel>
+        <translation><!-- 500g --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>50g</masterLabel>
+        <translation><!-- 50g --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Box 50pcs</masterLabel>
+        <translation><!-- Box 50pcs --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Family Pack</masterLabel>
+        <translation><!-- Family Pack --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

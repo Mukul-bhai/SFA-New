@@ -7,5 +7,6 @@
     <relationshipLabel>Return Orders</relationshipLabel>
     <relationshipName>Return_Orders</relationshipName>
     <required>false</required>
+    <trackTrending>false</trackTrending>
     <type>Lookup</type>
 </CustomField>

@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Is_Within_Geofence__c</fullName>
-    <label>Is Within Geofence</label>
-    <type>Checkbox</type>
     <defaultValue>true</defaultValue>
+    <label>Is Within Geofence</label>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
 </CustomField>

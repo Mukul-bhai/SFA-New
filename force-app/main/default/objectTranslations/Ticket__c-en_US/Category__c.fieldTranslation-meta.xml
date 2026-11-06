@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Category --></label>
+    <name>Category__c</name>
+    <picklistValues>
+        <masterLabel>Billing Issue</masterLabel>
+        <translation><!-- Billing Issue --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Damaged Stock</masterLabel>
+        <translation><!-- Damaged Stock --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Delayed Delivery</masterLabel>
+        <translation><!-- Delayed Delivery --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Display Asset</masterLabel>
+        <translation><!-- Display Asset --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Other</masterLabel>
+        <translation><!-- Other --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Product Quality</masterLabel>
+        <translation><!-- Product Quality --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Scheme Dispute</masterLabel>
+        <translation><!-- Scheme Dispute --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

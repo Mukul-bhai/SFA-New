@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Role / Hierarchy Level --></label>
+    <name>Hierarchy_Level__c</name>
+    <picklistValues>
+        <masterLabel>Admin</masterLabel>
+        <translation><!-- Admin --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Area Sales Manager</masterLabel>
+        <translation><!-- Area Sales Manager --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Regional Sales Manager</masterLabel>
+        <translation><!-- Regional Sales Manager --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Sales Executive</masterLabel>
+        <translation><!-- Sales Executive --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Sales Manager</masterLabel>
+        <translation><!-- Sales Manager --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

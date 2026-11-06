@@ -2,11 +2,17 @@
 <CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
     <brand>
         <headerColor>#0B5CAB</headerColor>
-        <shouldOverrideOrgTheme>false</shouldOverrideOrgTheme>
+        <logo>parle</logo>
+        <logoVersion>1</logoVersion>
+        <shouldOverrideOrgTheme>true</shouldOverrideOrgTheme>
     </brand>
     <description>SFA DMS Project - Complete Sales Force Automation with Route Planning, In-Visit Actions, Product Master, Schemes, Attendance and Issue Ticketing</description>
-    <formFactors>Large</formFactors>
     <formFactors>Small</formFactors>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <isNavTabPersistenceDisabled>false</isNavTabPersistenceDisabled>
+    <isOmniPinnedViewEnabled>false</isOmniPinnedViewEnabled>
     <label>SFA DMS project</label>
     <navType>Standard</navType>
     <tabs>standard-home</tabs>
@@ -30,5 +36,6 @@
     <tabs>Distributor__c</tabs>
     <tabs>Inventory__c</tabs>
     <tabs>Invoice__c</tabs>
+    <tabs>Product_Search</tabs>
     <uiType>Lightning</uiType>
 </CustomApplication>

@@ -3,25 +3,26 @@
     <fullName>Target_Type__c</fullName>
     <label>Target Type</label>
     <required>true</required>
+    <trackTrending>false</trackTrending>
     <type>Picklist</type>
     <valueSet>
         <valueSetDefinition>
             <sorted>false</sorted>
-                <value>
-                    <fullName>Monthly</fullName>
-                    <default>true</default>
-                    <label>Monthly</label>
-                </value>
-                <value>
-                    <fullName>Day_Wise</fullName>
-                    <default>false</default>
-                    <label>Day Wise</label>
-                </value>
-                <value>
-                    <fullName>Outlet_Type</fullName>
-                    <default>false</default>
-                    <label>Outlet Type</label>
-                </value>
+            <value>
+                <fullName>Monthly</fullName>
+                <default>true</default>
+                <label>Monthly</label>
+            </value>
+            <value>
+                <fullName>Day_Wise</fullName>
+                <default>false</default>
+                <label>Day Wise</label>
+            </value>
+            <value>
+                <fullName>Outlet_Type</fullName>
+                <default>false</default>
+                <label>Outlet Type</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

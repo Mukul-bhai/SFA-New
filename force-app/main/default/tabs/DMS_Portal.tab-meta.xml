@@ -2,5 +2,5 @@
 <CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
     <flexiPage>DMS_Portal</flexiPage>
     <label>DMS Portal</label>
-    <motif>Custom57: Building</motif>
+    <motif>Custom57: Building Block</motif>
 </CustomTab>

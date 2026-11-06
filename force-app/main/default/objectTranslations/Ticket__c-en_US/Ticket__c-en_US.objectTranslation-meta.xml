@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObjectTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <caseValues>
+        <plural>false</plural>
+        <value>Ticket</value>
+    </caseValues>
+    <caseValues>
+        <plural>true</plural>
+        <value>Tickets</value>
+    </caseValues>
+    <layouts>
+        <layout>Ticket Layout</layout>
+        <sections>
+            <label><!-- Description &amp; Resolution --></label>
+            <section>Description &amp; Resolution</section>
+        </sections>
+        <sections>
+            <label><!-- Ticket Details --></label>
+            <section>Ticket Details</section>
+        </sections>
+    </layouts>
+    <startsWith>Consonant</startsWith>
+</CustomObjectTranslation>

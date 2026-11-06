@@ -4,6 +4,8 @@
     <description>Audit notes for Must-Sell product push during the visit</description>
     <label>Must Sell Audit Notes</label>
     <length>2000</length>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
     <type>LongTextArea</type>
     <visibleLines>3</visibleLines>
 </CustomField>

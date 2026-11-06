@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Type --></label>
+    <name>Type__c</name>
+    <picklistValues>
+        <masterLabel>Damage WriteOff</masterLabel>
+        <translation><!-- Damage WriteOff --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>GRN Receipt</masterLabel>
+        <translation><!-- GRN Receipt --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Order Dispatch</masterLabel>
+        <translation><!-- Order Dispatch --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Order Reservation</masterLabel>
+        <translation><!-- Order Reservation --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Reservation Release</masterLabel>
+        <translation><!-- Reservation Release --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Stock Adjustment</masterLabel>
+        <translation><!-- Stock Adjustment --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Transfer In</masterLabel>
+        <translation><!-- Transfer In --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Transfer Out</masterLabel>
+        <translation><!-- Transfer Out --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

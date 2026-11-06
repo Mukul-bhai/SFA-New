@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Survey Type --></label>
+    <name>Survey_Type__c</name>
+    <picklistValues>
+        <masterLabel>Customer Satisfaction</masterLabel>
+        <translation><!-- Customer Satisfaction --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>General Feedback</masterLabel>
+        <translation><!-- General Feedback --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>New Launch Feedback</masterLabel>
+        <translation><!-- New Launch Feedback --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Visibility Audit</masterLabel>
+        <translation><!-- Visibility Audit --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

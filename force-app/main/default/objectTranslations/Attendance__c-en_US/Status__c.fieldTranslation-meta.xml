@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Status --></label>
+    <name>Status__c</name>
+    <picklistValues>
+        <masterLabel>Leave</masterLabel>
+        <translation><!-- Leave --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Punched In</masterLabel>
+        <translation><!-- Punched In --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Punched Out</masterLabel>
+        <translation><!-- Punched Out --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Regularized</masterLabel>
+        <translation><!-- Regularized --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

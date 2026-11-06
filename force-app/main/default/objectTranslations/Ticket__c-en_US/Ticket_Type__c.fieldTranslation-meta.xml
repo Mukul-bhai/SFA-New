@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Ticket Type --></label>
+    <name>Ticket_Type__c</name>
+    <picklistValues>
+        <masterLabel>Primary (Distributor to Company)</masterLabel>
+        <translation><!-- Primary (Distributor to Company) --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Secondary (Outlet to Distributor)</masterLabel>
+        <translation><!-- Secondary (Outlet to Distributor) --></translation>
+    </picklistValues>
+</CustomFieldTranslation>

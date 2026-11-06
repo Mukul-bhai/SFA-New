@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObjectTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <caseValues>
+        <plural>false</plural>
+        <value>Product Return</value>
+    </caseValues>
+    <caseValues>
+        <plural>true</plural>
+        <value>Product Returns</value>
+    </caseValues>
+    <layouts>
+        <layout>Product Return Layout</layout>
+        <sections>
+            <label><!-- Remarks --></label>
+            <section>Remarks</section>
+        </sections>
+        <sections>
+            <label><!-- Return Information --></label>
+            <section>Return Information</section>
+        </sections>
+    </layouts>
+    <startsWith>Consonant</startsWith>
+</CustomObjectTranslation>

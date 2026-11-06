@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomFieldTranslation xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label><!-- Sell Classification --></label>
+    <name>Sell_Classification__c</name>
+    <picklistValues>
+        <masterLabel>Focused Sell</masterLabel>
+        <translation><!-- Focused Sell --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Must Sell</masterLabel>
+        <translation><!-- Must Sell --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Regular</masterLabel>
+        <translation><!-- Regular --></translation>
+    </picklistValues>
+    <picklistValues>
+        <masterLabel>Suggested Sell</masterLabel>
+        <translation><!-- Suggested Sell --></translation>
+    </picklistValues>
+</CustomFieldTranslation>
